@@ -2,7 +2,11 @@
 
 **Human-directed • AI-assisted • open-source wearable computing experiment**
 
-CollarPet is a personal wearable-computing project by **DakotaWolfi / Jenna Wolf**. It combines a small Linux SBC, an ESP32-S3 coprocessor, e-paper interfaces, sensors, lights, haptics, wireless remotes, and optional animatronic gear such as tails and ears.
+CollarPet is a personal wearable-computing project by **DakotaWolfi / Jenna Wolf**.
+
+It combines a small Linux SBC, an ESP32-S3 coprocessor, e-paper interfaces, sensors, lights, haptics, wireless remotes, and optional animatronic gear such as tails and ears.
+
+CollarPet started as an experimental wearable pet-computer and has gradually grown into a platform for sensors, e-paper controls, reactive lighting, haptics, song recognition, wireless remotes, and animatronic gear.
 
 The project is still a prototype. Expect active development, rough edges, changing hardware, and the occasional deeply questionable bench experiment.
 
@@ -13,7 +17,7 @@ Software and schematics are public now. The production PCB layout is still in de
 ## What it currently does
 
 - Orange Pi-based main computer running the CollarPet runtime
-- ESP32-S3 coprocessor for realtime hardware tasks
+- ESP32-S3 coprocessor for real-time hardware tasks
 - E-paper UI for pet state, events, status, and song recognition
 - Heltec Vision Master E213 remote controls over LoRa
 - Tail Company tail integration over BLE
@@ -22,19 +26,25 @@ Software and schematics are public now. The production PCB layout is still in de
 - RGB lighting and haptic feedback
 - Environmental, motion, GPS, and other sensor integration
 - Phone-friendly BLE ownership: CollarPet can connect when needed and release gear again when idle
-- Experimental direct-servo active mode for more dynamic tail/ear behaviour
+- Experimental direct-servo active mode for more dynamic tail and ear behaviour
 
 ## Current prototype hardware
 
-The current development system uses an **Orange Pi Zero 3W** as the main Linux computer and an **ESP32-S3** as the realtime coprocessor. The stack also includes an e-paper display, addressable LEDs, motion/environment sensors, and a small active heatsink/blower.
+The current development system uses an **Orange Pi Zero 3W** as the main Linux computer and an **ESP32-S3** as the real-time coprocessor.
+
+The stack also includes an e-paper display, addressable LEDs, motion and environmental sensors, and a small active heatsink/blower.
 
 ![Orange Pi active cooler](docs/images/orange-pi-cooler.jpg)
 
-The final hardware is being redesigned into a cleaner stacked PCB assembly. Thermal management is still under active development because this is intended to be worn close to the body.
+The final hardware is being redesigned into a cleaner stacked PCB assembly.
+
+Thermal management is still under active development because this is intended to be worn close to the body, so simply staying below the silicon temperature limit is not good enough.
 
 ## Remote controls
 
-CollarPet supports a small network of e-paper remotes. The current remote firmware provides pet state, actions, gear control, network status, and configuration while keeping the normal screen intentionally uncluttered.
+CollarPet supports a small network of e-paper remotes.
+
+The current remote firmware provides pet state, actions, gear control, network status, and configuration while keeping the normal screen intentionally uncluttered.
 
 ![CollarPet remotes](docs/images/collarpet-remotes.jpg)
 
@@ -54,7 +64,7 @@ The main CollarPet display follows the same visual language as the remotes: a la
                                |
                     +----------v-----------+
                     |      ESP32-S3        |
-                    | realtime coprocessor |
+                    | real-time coprocessor|
                     +----------+-----------+
                                |
              +-----------------+------------------+
@@ -64,27 +74,30 @@ The main CollarPet display follows the same visual language as the remotes: a la
         LoRa remotes <------ CollarPet ------> BLE gear
                                       |          tail / ears
                                       +-------> phone coexistence
-```
+````
 
-The Orange Pi handles higher-level behaviour, UI, song recognition, networking, and BLE gear integration. The ESP32-S3 remains responsible for realtime hardware jobs such as LEDs, haptics, and sensor preprocessing.
+The Orange Pi handles higher-level behaviour, UI, song recognition, networking, and BLE gear integration.
+
+The ESP32-S3 remains responsible for real-time hardware jobs such as LEDs, haptics, and sensor preprocessing.
 
 ## Hardware source status
 
 The CollarPet hardware is intended to be open source as well.
 
-The current repository already contains the available schematic and EasyEDA design files. These document the electrical design and can be used as a starting point for understanding or reproducing the hardware.
+The repository already contains the current schematic and EasyEDA source files, so the electrical design is available for inspection and reuse.
 
-The physical prototype is still built largely on perfboard and very much needs to be turned into a proper PCB revision.
+The physical prototype is still built largely on perfboard and urgently needs to become a proper PCB revision.
 
-The planned PCB layout is not published yet because the current design includes third-party Eurofurence 31 silkscreen artwork. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
+The PCB layout itself is not published yet because the current design contains third-party Eurofurence 31 silkscreen artwork. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
 
-Once that is clarified, the PCB layout can either be published as-is with permission, or released in a cleaned version without the restricted artwork.
+Once that is clarified, the PCB layout can either be published with permission or released as a cleaned version without the restricted artwork.
 
 ## Repository layout
 
 ```text
 pi/                 Main Orange Pi runtime
 remote/             Heltec Vision Master E213 remote firmware
+hardware/           Schematics and EasyEDA source files
 tools/fan/          Experimental wearable-oriented fan controller
 docs/               Project notes and images
 ```
@@ -99,24 +112,33 @@ AI assistance has been an important part of making this project possible. It has
 
 The project does not attempt to hide or minimise that involvement. AI is used here as a development tool and collaborator, in the same spirit as using better instruments, documentation, libraries, and test equipment to make previously difficult ideas practical.
 
+## Tail and EarGear integration
+
+CollarPet can connect to compatible Tail Company / TailControl devices and EarGear over BLE.
+
+The integration includes normal preset actions as well as experimental direct-position control where supported.
+
+This is an independent hobby project and is **not an official Tail Company product**.
+
 ## Acknowledgements
 
 Special thanks to **Dark Gure** and **Master Tailor** from the Tail Company Telegram community for the enthusiastic push to publish this project instead of keeping the monster on the workbench.
 
 Thanks also to the projects, libraries, hardware vendors, and documentation authors that make experimental builds like this possible.
 
-## Tail and EarGear integration
-
-CollarPet can connect to compatible Tail Company / TailControl devices and EarGear over BLE. The integration includes normal canned actions as well as experimental direct-position control where supported.
-
-This is an independent hobby project and is **not an official Tail Company product**.
-
 ## Status
 
 Very much **work in progress**.
 
-The current code in this repository represents the active prototype rather than a polished end-user release. Hardware and software interfaces may change without warning while the design settles.
+The current code in this repository represents the active prototype rather than a polished end-user release.
+
+Hardware and software interfaces may change without warning while the design settles.
 
 ## License
 
-A project license has not been selected yet. Until one is added, normal copyright rules apply.
+A project license has not been selected yet.
+
+Until one is added, normal copyright rules apply.
+
+
+
