@@ -8,6 +8,8 @@ The project is still a prototype. Expect active development, rough edges, changi
 
 ![CollarPet prototype overview](docs/images/collarpet-overview.jpg)
 
+Software and schematics are public now. The production PCB layout is still in development.
+
 ## What it currently does
 
 - Orange Pi-based main computer running the CollarPet runtime
@@ -70,12 +72,13 @@ The Orange Pi handles higher-level behaviour, UI, song recognition, networking, 
 
 The CollarPet hardware is intended to be open source as well.
 
-The current PCB design files are not yet included in this repository because the present prototype revision contains third-party silkscreen artwork associated with Eurofurence 31. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
+The current repository already contains the available schematic and EasyEDA design files. These document the electrical design and can be used as a starting point for understanding or reproducing the hardware.
 
-Once that is clarified, the hardware source files can be published here, or a clean version without the restricted artwork can be released.
+The physical prototype is still built largely on perfboard and very much needs to be turned into a proper PCB revision.
 
-Until then, the software is public, while the hardware design remains temporarily unpublished.
+The planned PCB layout is not published yet because the current design includes third-party Eurofurence 31 silkscreen artwork. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
 
+Once that is clarified, the PCB layout can either be published as-is with permission, or released in a cleaned version without the restricted artwork.
 
 ## Repository layout
 
