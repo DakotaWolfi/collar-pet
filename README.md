@@ -102,6 +102,19 @@ tools/fan/          Experimental wearable-oriented fan controller
 docs/               Project notes and images
 ```
 
+## Documentation
+
+More detailed subsystem documentation is available in [`docs/`](docs/README.md), including:
+
+- [System architecture](docs/ARCHITECTURE.md)
+- [Song recognition](docs/SONG_RECOGNITION.md)
+- [Remote network](docs/REMOTE_NETWORK.md)
+- [BLE tail / EarGear integration](docs/BLE_GEAR.md)
+- [ESP32-S3 coprocessor](docs/ESP32_COPROCESSOR.md)
+- [Thermal management](docs/THERMAL_MANAGEMENT.md)
+- [Hardware status](docs/HARDWARE_STATUS.md)
+- [Luma voice commands](docs/VOICE_COMMANDS_PLAN.md)
+
 ## Development note
 
 CollarPet is a project by **DakotaWolfi / Jenna Wolf**.
