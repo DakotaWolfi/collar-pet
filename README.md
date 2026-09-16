@@ -1,6 +1,6 @@
 # CollarPet
 
-**Human-directed • AI-assisted • open wearable computing experiment**
+**Human-directed • AI-assisted • open-source wearable computing experiment**
 
 CollarPet is a personal wearable-computing project by **DakotaWolfi / Jenna Wolf**. It combines a small Linux SBC, an ESP32-S3 coprocessor, e-paper interfaces, sensors, lights, haptics, wireless remotes, and optional animatronic gear such as tails and ears.
 
@@ -65,6 +65,17 @@ The main CollarPet display follows the same visual language as the remotes: a la
 ```
 
 The Orange Pi handles higher-level behaviour, UI, song recognition, networking, and BLE gear integration. The ESP32-S3 remains responsible for realtime hardware jobs such as LEDs, haptics, and sensor preprocessing.
+
+## Hardware source status
+
+The CollarPet hardware is intended to be open source as well.
+
+The current PCB design files are not yet included in this repository because the present prototype revision contains third-party silkscreen artwork associated with Eurofurence 31. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
+
+Once that is clarified, the hardware source files can be published here, or a clean version without the restricted artwork can be released.
+
+Until then, the software is public, while the hardware design remains temporarily unpublished.
+
 
 ## Repository layout
 
