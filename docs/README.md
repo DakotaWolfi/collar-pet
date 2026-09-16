@@ -11,6 +11,7 @@ This directory contains the longer-form documentation for CollarPet. The top-lev
 - [ESP32-S3 coprocessor](ESP32_COPROCESSOR.md)
 - [Thermal management](THERMAL_MANAGEMENT.md)
 - [Hardware status](HARDWARE_STATUS.md)
-- [Luma voice commands](VOICE_COMMANDS_PLAN.md) — planned local voice-command interface.
+- [Luma voice commands](VOICE_COMMANDS_PLAN.md)
+- [Music and reactive gear](MUSIC_REACTIONS.md)
 
 The project is under active development, so these documents describe the current prototype rather than a frozen specification.

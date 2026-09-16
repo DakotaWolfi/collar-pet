@@ -2,12 +2,16 @@
 
 CollarPet contains a local known-song matcher. It recognises songs that have already been added to its fingerprint database without requiring a cloud music-recognition service.
 
-This is separate from general speech or voice-command recognition.
+This remains separate from Luma speech recognition and from the more general music-reactive gear analysis.
 
 ## Processing flow
 
 ```text
 microphone audio
+      |
+      +---------------------------> Luma voice recogniser
+      |
+      +---------------------------> generic audio / music analysis
       |
       v
 short rolling audio window
@@ -35,7 +39,9 @@ The current Linux runtime uses a six-second song window and attempts matching ev
 
 ## Audio gate
 
-Very quiet or zero-filled audio is rejected before fingerprint matching. Otherwise normalised silence can create a repeatable artificial fingerprint and produce false recognitions. The current default gate is approximately `-60 dBFS`, configurable with `COLLARPET_SONG_GATE_DBFS`.
+Very quiet or zero-filled audio is rejected before fingerprint matching. Otherwise normalised silence can create a repeatable artificial fingerprint and produce false recognitions.
+
+The current default gate is approximately `-60 dBFS`, configurable with `COLLARPET_SONG_GATE_DBFS`.
 
 ## Acquire and hold thresholds
 
@@ -52,13 +58,28 @@ The thresholds are configurable with `COLLARPET_SONG_ACQUIRE_VOTES` and `COLLARP
 
 ## Switching between songs
 
-A different candidate is not allowed to replace the current song merely because it wins by one vote. The current defaults also require roughly a `1.20` score ratio and a `25` vote absolute gap before switching.
+A different candidate is not allowed to replace the current song merely because it wins by one vote.
+
+The current defaults also require roughly a `1.20` score ratio and a `25` vote absolute gap before switching.
 
 ## User-visible behaviour
 
 When a new known song is accepted, CollarPet can temporarily give the e-paper display to a full-screen announcement with artist, title and confidence information. The current announcement time is about two seconds.
 
 A known song can also trigger higher-level reactions. One implemented example is the optional Tail Company known-song wag.
+
+## Logging
+
+Known-song matches use the `[SONG]` console prefix.
+
+During audio/voice bench work, a useful combined filter is:
+
+```bash
+tail -F /home/jenna/collarpet/logs/collarpet-console.log \
+  | grep --line-buffered -Ei '\[LUMA|\[SONG|\[MUSIC|\[MUSIC FEEL|\[EARS|\[TAIL|\[GEAR VU|AUDIO'
+```
+
+This shows known-song recognition next to Luma, generic music detection and reactive gear.
 
 ## Database structure
 
@@ -80,4 +101,4 @@ Generated index data is runtime data and does not need to be committed to the re
 
 The matcher is not intended to identify arbitrary unknown music from the internet. It recognises songs that were deliberately prepared and added to the local database.
 
-Voice commands should remain a separate pipeline so speech recognition can be changed without disturbing the known-song matcher.
+Luma voice recognition and music-feel analysis remain separate consumers of the shared microphone pipeline.
