@@ -4,22 +4,21 @@
 
 CollarPet is a personal wearable-computing project by **DakotaWolfi / Jenna Wolf**.
 
-It combines a small Linux SBC, an ESP32-S3 coprocessor, e-paper interfaces, sensors, lights, haptics, wireless remotes, and optional animatronic gear such as tails and ears.
+It combines a Linux SBC, an ESP32-S3 coprocessor, e-paper interfaces, sensors, RGB lighting, haptics, wireless remotes, BLE-connected animatronic gear, and an increasingly questionable amount of bench hardware.
 
-CollarPet started as an experimental wearable pet-computer and has gradually grown into a platform for sensors, e-paper controls, reactive lighting, haptics, song recognition, wireless remotes, and animatronic gear.
+It started as a wearable pet-computer experiment and has grown into a platform for reactive behaviour, sensor processing, song recognition, PetMind experiments, remote controls, animatronic gear integration, and whatever happened on the workbench that evening.
 
-The project is still a prototype. Expect active development, rough edges, changing hardware, and the occasional deeply questionable bench experiment.
+> **Prototype warning:** this repository follows the active development system. Expect rough edges, changing interfaces, experimental hardware, and the occasional deeply questionable engineering decision.
 
 ![CollarPet prototype with PT35 terminal and remote](docs/images/prototype/collarpet-system-overview-fursuit-pt35-remote.png)
 
-Software and schematics are public now. The production PCB layout is still in development.
+## What CollarPet currently does
 
-## What it currently does
-
-- Orange Pi-based main computer running the CollarPet runtime
-- ESP32-S3 coprocessor for real-time hardware tasks
+- **Orange Pi Zero 3W** main computer for the higher-level CollarPet runtime
+- **ESP32-S3** coprocessor for real-time hardware tasks
 - E-paper UI for pet state, events, status, and song recognition
-- Heltec Vision Master E213 remote controls over LoRa
+- PT35 pocket terminal dashboard, controls, diagnostics, and PetMind training
+- Heltec Vision Master E213 LoRa remotes
 - Tail Company tail integration over BLE
 - EarGear integration over BLE
 - Song recognition and known-song reactions
@@ -27,36 +26,31 @@ Software and schematics are public now. The production PCB layout is still in de
 - Environmental, motion, GPS, and other sensor integration
 - Phone-friendly BLE ownership: CollarPet can connect when needed and release gear again when idle
 - Experimental direct-servo active mode for more dynamic tail and ear behaviour
+- PetMind real-world training / labelled event recording workflow
 
 ## Current prototype hardware
 
 The current development system uses an **Orange Pi Zero 3W** as the main Linux computer and an **ESP32-S3** as the real-time coprocessor.
 
-The stack also includes an e-paper display, addressable LEDs, motion and environmental sensors, and a small active heatsink/blower.
+The prototype stack also includes an e-paper display, addressable LEDs, environmental and motion sensors, a small active heatsink/blower, and a large amount of hand-wired perfboard.
 
 ![Current CollarPet sensor and display prototype](docs/images/prototype/collarpet-sensor-board-top-overview.png)
 
 The final hardware is being redesigned into a cleaner stacked PCB assembly.
 
-Thermal management is still under active development because this is intended to be worn close to the body, so simply staying below the silicon temperature limit is not good enough.
+Thermal management is still an important part of the design because this is intended to be worn close to the body. Staying below the silicon temperature limit is not enough if the enclosure itself becomes uncomfortable.
 
-### Dedicated GPU*
+## PT35 companion terminal
 
-Yes, CollarPet technically has a dedicated NVIDIA GPU.
+The PT35 acts as a portable dashboard and service terminal for CollarPet.
 
-![The technically-dedicated NVIDIA GPU mounted on the CollarPet prototype](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+It can be used for status, controls, diagnostics, SSH access, maintenance tools, and PetMind training.
 
-\* Technically. There is a physically separate NVIDIA GPU package mounted on the board. It is not electrically integrated and currently contributes exactly zero GPU acceleration. The important part is that saying "it has a dedicated GPU" is now technically defensible.
+![PT35 CollarPet dashboard](docs/images/prototype/pt35-collarpet-main-ui.png)
 
-## Remote controls
+The PetMind training interface allows real-world events to be labelled and recorded from the PT35 without turning the main CollarPet display into a giant engineering dashboard.
 
-CollarPet supports a small network of e-paper remotes.
-
-The current remote firmware provides pet state, actions, gear control, network status, and configuration while keeping the normal screen intentionally uncluttered.
-
-![CollarPet remotes](docs/images/collarpet-remotes.jpg)
-
-The main CollarPet display follows the same visual language as the remotes: a large pet portrait, short state text, and contextual gear indicators instead of a dense engineering dashboard.
+![PT35 PetMind training interface](docs/images/prototype/pt35-petmind-training-ui.png)
 
 ## Architecture
 
@@ -80,11 +74,62 @@ The main CollarPet display follows the same visual language as the remotes: a la
         LoRa remotes <------ CollarPet ------> BLE gear
                                       |          tail / ears
                                       +-------> phone coexistence
-````
 
-The Orange Pi handles higher-level behaviour, UI, song recognition, networking, and BLE gear integration.
+                 PT35 <------ network / tools ------> CollarPet
+```
 
-The ESP32-S3 remains responsible for real-time hardware jobs such as LEDs, haptics, and sensor preprocessing.
+The Orange Pi handles higher-level behaviour, UI, song recognition, networking, BLE gear integration, and PetMind-related processing.
+
+The ESP32-S3 handles real-time hardware jobs such as LEDs, haptics, and sensor preprocessing.
+
+## Remote controls
+
+CollarPet supports a small network of e-paper remotes.
+
+The current remote firmware provides pet state, actions, gear control, network status, and configuration while keeping the normal screen intentionally uncluttered.
+
+![CollarPet remotes](docs/images/collarpet-remotes.jpg)
+
+The main CollarPet display follows the same visual language as the remotes: a large pet portrait, short state text, and contextual indicators instead of a dense engineering dashboard.
+
+## Yes, technically there is a dedicated NVIDIA GPU
+
+This section exists because the prototype has reached the point where technical accuracy and stupidity overlap.
+
+![Decorative NVIDIA GPU package on the CollarPet prototype](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+
+There is an actual **NVIDIA GPU package physically mounted on the prototype**.
+
+It is salvaged, decorative, and **not electrically connected as a working graphics processor**.
+
+So yes, CollarPet technically has a dedicated NVIDIA GPU.
+
+**Thanks to the dedicated NVIDIA GPU, we expect significantly better FPS in games.**
+
+...wait.
+
+That's the decorative one.
+
+The **GTX 1080 Ti** is the one that could, in principle, actually do graphics work:
+
+![CollarPet next to a GTX 1080 Ti bench experiment](docs/images/prototype/collarpet-bench-overview-pt35-gpu-prototype.png)
+
+To be clear: the 1080 Ti is **not part of the wearable build** and is not currently integrated into CollarPet.
+
+The Orange Pi side already exposes a **PCIe x1 interface** through the small ribbon-cable connection visible in the prototype photos, so the basic PCIe path is actually present.
+
+Making a GTX 1080 Ti work would still require the appropriate adapter/riser arrangement, external power, driver/software support, and a heroic disregard for the words *wearable*, *compact*, and *battery life*.
+
+But unlike the decorative GPU package, it is at least a technically functional graphics card, and the host already has a real PCIe link available.
+
+Current GPU status:
+
+- **Dedicated NVIDIA GPU:** technically yes
+- **Useful:** no
+- **Improved gaming FPS:** also no
+- **Could a GTX 1080 Ti theoretically be attached if the project completely lost control of itself:** technically yes
+
+This is the kind of distinction that matters around here.
 
 ## Hardware source status
 
@@ -101,43 +146,38 @@ Once that is clarified, the PCB layout can either be published with permission o
 ## Repository layout
 
 ```text
-pi/                 Main Orange Pi runtime (latest sync from temp resources/current)
-remote/             Heltec Vision Master E213 remote firmware (latest sync)
-esp32/              ESP32-S3 coprocessor firmware (latest sync)
-pt35/               PM35/PT35 integration scripts, desktop launchers, dashboard link tools
+pi/                 Main Orange Pi runtime
+remote/             Heltec Vision Master E213 remote firmware
+esp32/              ESP32-S3 coprocessor firmware
+pt35/               PT35 integration, keyboard firmware, dashboard and training tools
 PCB/                Schematics and EasyEDA source files
 tools/fan/          Experimental wearable-oriented fan controller
-docs/               Project notes and images
+docs/               Project documentation and images
+artifacts/          Preserved handoff / integration bundles
 ```
 
-## Latest synced source bundles
+## PetMind and training
 
-The repository now includes the latest source snapshots from:
+The repository includes the current PetMind V0.3 code/model resources and the PT35 real-world training workflow.
 
-- `temp resurces/current/collar pet`
-- `temp resurces/current/Wireles remote`
-- `temp resurces/current/ESP32-s3 coprocessor`
-- `temp resurces/current/pt35`
-
-These are published in the tracked folders listed above so people can build from GitHub without browsing temporary archive folders.
-
-## Build resources still needed
-
-Some runtime resources are referenced by code but are not included in Git yet:
-
-- Song database content and generated index files expected under `/home/jenna/collarpet/songdb`
-- Vosk speech model expected under `/home/jenna/collarpet/models/vosk-model-small-en-us-0.15`
-- Live state/config files created at runtime under `/home/jenna/collarpet/state` and `/home/jenna/collarpet/logs`
-- System service and host config files such as `collarpet.service` and `/etc/collarpet/link.conf`
-
-PetMind handoff artifacts are now tracked in:
+Tracked integration artifacts include:
 
 - `pi/scripts/update-collarpet-shared-ble-scanfix.sh`
 - `pt35/scripts/add-petmind-training-desktop-shortcut.sh`
 - `pt35/scripts/update-pt35-petmind-training-ui-v2.sh`
 - `artifacts/CollarPet_PetMind_RealTraining_Prep_v1.zip`
 
-If you provide these resources (or preferred replacements), they can also be added/documented so third parties can fully reproduce your setup.
+See [PetMind real-world training](docs/PETMIND_REAL_TRAINING.md) for the workflow, recovery notes, and current resource status.
+
+## Runtime resources not included
+
+Some generated or machine-specific resources are intentionally not tracked in Git:
+
+- Song database content and generated index files expected under `/home/jenna/collarpet/songdb`
+- Vosk speech model expected under `/home/jenna/collarpet/models/vosk-model-small-en-us-0.15`
+- Live state/config files created at runtime under `/home/jenna/collarpet/state`
+- Runtime logs under `/home/jenna/collarpet/logs`
+- Host-specific service/config files such as `collarpet.service` and `/etc/collarpet/link.conf`
 
 ## Documentation
 
@@ -153,11 +193,12 @@ More detailed subsystem documentation is available in [`docs/`](docs/README.md),
 - [Luma voice commands](docs/VOICE_COMMANDS_PLAN.md)
 - [PetMind real-world training](docs/PETMIND_REAL_TRAINING.md)
 
-PT35 keyboard/download resources are documented in:
+PT35 resources are documented in:
 
 - `pt35/Downloads/README.md`
 - `pt35/keyboard/README.md`
 - `pt35/training/README.md`
+- `pt35/scripts/README.md`
 
 ## Development note
 
@@ -181,7 +222,7 @@ This is an independent hobby project and is **not an official Tail Company produ
 
 Special thanks to **Dark Gure** and **Master Tailor** from the Tail Company Telegram community for the enthusiastic push to publish this project instead of keeping the monster on the workbench.
 
-Thanks also to the projects, libraries, hardware vendors, and documentation authors that make experimental builds like this possible.
+Thanks also to the projects, libraries, hardware vendors, documentation authors, testers, and people willing to encourage questionable experiments that make builds like this possible.
 
 ## Status
 
@@ -196,6 +237,3 @@ Hardware and software interfaces may change without warning while the design set
 A project license has not been selected yet.
 
 Until one is added, normal copyright rules apply.
-
-
-
