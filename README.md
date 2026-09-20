@@ -10,7 +10,7 @@ CollarPet started as an experimental wearable pet-computer and has gradually gro
 
 The project is still a prototype. Expect active development, rough edges, changing hardware, and the occasional deeply questionable bench experiment.
 
-![CollarPet prototype overview](docs/images/collarpet-overview.jpg)
+![CollarPet prototype with PT35 terminal and remote](docs/images/prototype/collarpet-system-overview-fursuit-pt35-remote.png)
 
 Software and schematics are public now. The production PCB layout is still in development.
 
@@ -34,7 +34,7 @@ The current development system uses an **Orange Pi Zero 3W** as the main Linux c
 
 The stack also includes an e-paper display, addressable LEDs, motion and environmental sensors, and a small active heatsink/blower.
 
-![Orange Pi active cooler](docs/images/orange-pi-cooler.jpg)
+![Current CollarPet sensor and display prototype](docs/images/prototype/collarpet-sensor-board-top-overview.png)
 
 The final hardware is being redesigned into a cleaner stacked PCB assembly.
 
@@ -49,8 +49,6 @@ The current remote firmware provides pet state, actions, gear control, network s
 ![CollarPet remotes](docs/images/collarpet-remotes.jpg)
 
 The main CollarPet display follows the same visual language as the remotes: a large pet portrait, short state text, and contextual gear indicators instead of a dense engineering dashboard.
-
-![CollarPet e-paper UI](docs/images/collarpet-ui.jpg)
 
 ## Architecture
 

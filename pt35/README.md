@@ -25,3 +25,13 @@ Use the scripts as deployment/update helpers on the target PM35/PT35 system.
 For keyboard-specific documentation, see `Downloads/README.md` and `keyboard/README.md`.
 
 For PetMind handoff scripts, see `scripts/`.
+
+## UI snapshots
+
+Main CollarPet status UI on PT35:
+
+![PT35 CollarPet main UI](../docs/images/prototype/pt35-collarpet-main-ui.png)
+
+PetMind Training Recorder on PT35:
+
+![PT35 PetMind Training Recorder UI](../docs/images/prototype/pt35-petmind-training-ui.png)
