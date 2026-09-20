@@ -41,3 +41,7 @@ Technical close-up of sensor/LED/microphone area:
 ![Sensor board close-up with BH1750 and microphone breakout](images/prototype/collarpet-sensor-board-nvidia-bh1750-mic-closeup.png)
 
 Note: the visible NVIDIA package on the prototype is a salvaged physical package detail used in prototype construction context; do not treat this image alone as evidence of an onboard functional GPU.
+
+Development bench context (prototype + PT35 + the physically separate GPU gag component):
+
+![CollarPet bench overview with PT35 and GPU prototype gag](images/prototype/collarpet-bench-overview-pt35-gpu-prototype.png)

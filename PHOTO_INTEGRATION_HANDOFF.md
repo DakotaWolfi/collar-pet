@@ -22,7 +22,7 @@ Keep the filenames exactly as supplied unless the repository already has a stric
 | `collarpet-sensor-board-top-overview-alt.png` | Alternate top-down board shot with slightly different framing. Use only where the alternate angle is useful; avoid duplicating both in the same short section. |
 | `collarpet-sensor-board-nvidia-bh1750-mic-closeup.png` | Close technical shot showing the NVIDIA package, BH1750 module, microphone breakout, LEDs, and e-paper edge. |
 | `collarpet-bh1750-nvidia-mic-closeup.png` | Another useful close-up of the BH1750, NVIDIA package, and round microphone breakout. |
-| `collarpet-nvidia-mic-module-closeup.png` | Focused NVIDIA + microphone module view. Useful for prototype/e-waste construction notes or the joke "onboard NVIDIA" section if one exists. |
+| `collarpet-nvidia-mic-module-closeup.png` | Focused NVIDIA + microphone module view. **Use this for the deliberate dedicated-GPU joke section.** It visibly shows the salvaged NVIDIA package mounted on the prototype board. |
 | `collarpet-sensor-board-red-led-side-closeup.png` | Side/close view with red LEDs active; useful for LED/prototype construction documentation. |
 | `collarpet-prototype-side-stack-and-wiring.png` | Side view showing stacked construction, exposed wiring, USB/HDMI ports, and mechanical arrangement. |
 | `collarpet-orange-pi-cooling-uv5r-shell.png` | Shows SBC heatsink/fan arrangement inside the modified UV-5R donor shell. Use in mechanical/thermal notes. |
@@ -50,6 +50,35 @@ and, where the current electronics are discussed:
 ```md
 ![Current CollarPet sensor and display prototype](docs/images/prototype/collarpet-sensor-board-top-overview.png)
 ```
+
+
+## Required joke / easter-egg integration
+
+Please keep the NVIDIA gag in the documentation. The joke is intentionally literal: the prototype really does have a physically separate NVIDIA GPU package mounted on the board, even though it is not electrically integrated or used for graphics/compute.
+
+Use `collarpet-nvidia-mic-module-closeup.png` directly beside the joke so the reader can see exactly what the statement refers to. A good location is the current-prototype/hardware section of the top-level README, after the serious hardware overview rather than before it.
+
+Suggested wording:
+
+```md
+### Dedicated GPU*
+
+Yes, CollarPet technically has a dedicated NVIDIA GPU.
+
+![The technically-dedicated NVIDIA GPU mounted on the CollarPet prototype](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+
+\* Technically. There is a physically separate NVIDIA GPU package mounted on the board. It is not electrically integrated and currently contributes exactly zero GPU acceleration. The important part is that saying “it has a dedicated GPU” is now technically defensible.
+```
+
+A slightly shorter alternative, if the README tone should stay compact:
+
+```md
+> **Dedicated GPU:** technically, yes. There is an actual NVIDIA GPU package mounted on the prototype. It is not connected or doing any compute, but the hardware statement is technically possible to make with a straight face.
+
+![The technically-dedicated GPU](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+```
+
+Keep the joke clearly separated from the factual hardware feature list so nobody mistakes the salvaged package for a functional GPU subsystem.
 
 ## Recommended detailed-doc integration
 
@@ -80,7 +109,7 @@ Prefer the most informative image for each section instead of inserting every ne
 ## Important factual/context notes for captions
 
 - These photos show the current rough prototype/development hardware, not a finished enclosure or production PCB.
-- The NVIDIA package visible on the prototype is a physical salvaged package used as a playful/e-waste prototype detail; do not document it as a functioning GPU unless the repo already explicitly explains that context.
+- The NVIDIA package visible on the prototype is a physical salvaged GPU package used as a deliberate hardware joke/e-waste detail. It is okay — and requested — to say the project **technically has a dedicated GPU**, as long as the same passage immediately clarifies that the package is not electrically integrated and provides no GPU acceleration.
 - The modified donor shell shown is from a Baofeng UV-5R style handheld housing/battery arrangement used mechanically for the prototype.
 - The PT35 images show real running UI states and are useful evidence for the current software workflow.
 

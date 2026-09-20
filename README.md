@@ -40,6 +40,14 @@ The final hardware is being redesigned into a cleaner stacked PCB assembly.
 
 Thermal management is still under active development because this is intended to be worn close to the body, so simply staying below the silicon temperature limit is not good enough.
 
+### Dedicated GPU*
+
+Yes, CollarPet technically has a dedicated NVIDIA GPU.
+
+![The technically-dedicated NVIDIA GPU mounted on the CollarPet prototype](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+
+\* Technically. There is a physically separate NVIDIA GPU package mounted on the board. It is not electrically integrated and currently contributes exactly zero GPU acceleration. The important part is that saying "it has a dedicated GPU" is now technically defensible.
+
 ## Remote controls
 
 CollarPet supports a small network of e-paper remotes.
