@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - VS Code
+Comment=Open the Collar Pet project directory
+Exec=code "/home/jenna/CollarPet"
+Terminal=false
+Categories=Development;

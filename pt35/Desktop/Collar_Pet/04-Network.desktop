@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - Network Scan
+Comment=Ping, mDNS and LAN discovery
+Exec=x-terminal-emulator -e bash -lc 'cp-net; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

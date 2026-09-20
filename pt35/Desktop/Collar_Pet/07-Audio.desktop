@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - Audio Test
+Comment=Record and play a five-second audio test
+Exec=x-terminal-emulator -e bash -lc 'cp-audio-test; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

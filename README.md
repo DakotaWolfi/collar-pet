@@ -95,12 +95,43 @@ Once that is clarified, the PCB layout can either be published with permission o
 ## Repository layout
 
 ```text
-pi/                 Main Orange Pi runtime
-remote/             Heltec Vision Master E213 remote firmware
-hardware/           Schematics and EasyEDA source files
+pi/                 Main Orange Pi runtime (latest sync from temp resources/current)
+remote/             Heltec Vision Master E213 remote firmware (latest sync)
+esp32/              ESP32-S3 coprocessor firmware (latest sync)
+pt35/               PM35/PT35 integration scripts, desktop launchers, dashboard link tools
+PCB/                Schematics and EasyEDA source files
 tools/fan/          Experimental wearable-oriented fan controller
 docs/               Project notes and images
 ```
+
+## Latest synced source bundles
+
+The repository now includes the latest source snapshots from:
+
+- `temp resurces/current/collar pet`
+- `temp resurces/current/Wireles remote`
+- `temp resurces/current/ESP32-s3 coprocessor`
+- `temp resurces/current/pt35`
+
+These are published in the tracked folders listed above so people can build from GitHub without browsing temporary archive folders.
+
+## Build resources still needed
+
+Some runtime resources are referenced by code but are not included in Git yet:
+
+- Song database content and generated index files expected under `/home/jenna/collarpet/songdb`
+- Vosk speech model expected under `/home/jenna/collarpet/models/vosk-model-small-en-us-0.15`
+- Live state/config files created at runtime under `/home/jenna/collarpet/state` and `/home/jenna/collarpet/logs`
+- System service and host config files such as `collarpet.service` and `/etc/collarpet/link.conf`
+
+PetMind handoff artifacts are now tracked in:
+
+- `pi/scripts/update-collarpet-shared-ble-scanfix.sh`
+- `pt35/scripts/add-petmind-training-desktop-shortcut.sh`
+- `pt35/scripts/update-pt35-petmind-training-ui-v2.sh`
+- `artifacts/CollarPet_PetMind_RealTraining_Prep_v1.zip`
+
+If you provide these resources (or preferred replacements), they can also be added/documented so third parties can fully reproduce your setup.
 
 ## Documentation
 
@@ -114,6 +145,13 @@ More detailed subsystem documentation is available in [`docs/`](docs/README.md),
 - [Thermal management](docs/THERMAL_MANAGEMENT.md)
 - [Hardware status](docs/HARDWARE_STATUS.md)
 - [Luma voice commands](docs/VOICE_COMMANDS_PLAN.md)
+- [PetMind real-world training](docs/PETMIND_REAL_TRAINING.md)
+
+PT35 keyboard/download resources are documented in:
+
+- `pt35/Downloads/README.md`
+- `pt35/keyboard/README.md`
+- `pt35/training/README.md`
 
 ## Development note
 

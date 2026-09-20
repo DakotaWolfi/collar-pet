@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet Dashboard
+Comment=Automatic Collar Pet discovery and connection
+Exec=/home/jenna/.local/bin/cp-dashboard
+Terminal=false
+Categories=Network;

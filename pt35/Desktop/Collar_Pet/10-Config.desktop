@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - Terminal Config
+Comment=Edit Collar Pet hostname, SSH username and UART settings
+Exec=sh -c 'if command -v code >/dev/null 2>&1; then code "/home/jenna/.config/collarpet/terminal.conf"; else x-terminal-emulator -e nano "/home/jenna/.config/collarpet/terminal.conf"; fi'
+Terminal=false
+Categories=Development;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Connect to Collar Pet
+Comment=BLE discovery, Wi-Fi hello, rescue AP fallback, then SSH
+Exec=x-terminal-emulator -e bash -lc '/home/jenna/.local/bin/cp-connect; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Network;Development;

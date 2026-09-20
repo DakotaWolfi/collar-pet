@@ -34,6 +34,7 @@ class LumaVoice:
         "haptic feedback on", "haptic feedback off",
         "ears react on", "ears react off", "ears music on", "ears music off",
         "connect tail", "connect ears", "connect gear",
+        "gear vu on", "gear vu off",
     )
 
     # Acoustic / word-order variants that Vosk may produce.
@@ -75,6 +76,12 @@ class LumaVoice:
         "ear connect": "connect ears",
         "ears connect": "connect ears",
         "gear connect": "connect gear",
+        "active gear on": "gear vu on",
+        "active gear off": "gear vu off",
+        "vu gear on": "gear vu on",
+        "vu gear off": "gear vu off",
+        "music gear on": "gear vu on",
+        "music gear off": "gear vu off",
     }
 
     def __init__(self, model_path, callback, wake_callback=None, min_confidence=0.55, log=None):

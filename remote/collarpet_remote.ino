@@ -13,7 +13,7 @@
 
 #define ENABLE_NEOPIXELS 1
 #define ENABLE_LOCAL_BH1750 0
-#define HW_Version11 0
+#define HW_Version11 1
 
 #if ENABLE_NEOPIXELS
 #include <Adafruit_NeoPixel.h>

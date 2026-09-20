@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - Camera Preview
+Comment=Open /dev/video0 with low latency
+Exec=x-terminal-emulator -e bash -lc 'cp-camera-test; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

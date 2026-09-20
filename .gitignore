@@ -1,0 +1,28 @@
+# Local archives and temporary bundles
+/temp resurces/
+
+# Python cache/build noise
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime state/logs
+*.log
+state/
+logs/
+
+# PT35 keyboard/generated artifacts
+pt35/keyboard/**/build/
+pt35/keyboard/**/pico-sdk/
+pt35/keyboard/**/backup_orinigal_firmware/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/

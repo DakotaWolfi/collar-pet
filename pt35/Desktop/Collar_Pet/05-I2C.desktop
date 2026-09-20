@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - I2C Scan
+Comment=Scan local Pi I2C bus 1
+Exec=x-terminal-emulator -e bash -lc 'cp-i2c 1; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - UART Console
+Comment=Open detected serial adapter at configured baud rate
+Exec=x-terminal-emulator -e bash -lc 'cp-uart; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

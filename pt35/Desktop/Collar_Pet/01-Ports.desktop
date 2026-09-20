@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - USB & Serial
+Comment=List connected USB and serial devices
+Exec=x-terminal-emulator -e bash -lc 'cp-ports; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

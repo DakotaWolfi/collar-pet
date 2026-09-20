@@ -1,5 +1,211 @@
-# COLLARPET_LIVE_LOGS_V1
-# COLLARPET_BATTERY_CHANNEL_V1
+#!/usr/bin/env bash
+set -Eeuo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+[[ "${1:-}" == collarpet || "${1:-}" == pt35 ]] || { echo 'Orange Pi: sudo bash update-collarpet-touch-menu.sh collarpet'; echo 'PT35: bash update-collarpet-touch-menu.sh pt35'; exit 2; }
+STAGE=$(mktemp -d)
+trap 'rm -rf "$STAGE"' EXIT
+cat > "$STAGE/runtime_menu.py" <<'CP_TOUCH_RUNTIME_MENU_PY'
+"""Collar-owned menu schema and validated commands in the existing asyncio loop."""
+import asyncio
+import hashlib
+import json
+import os
+from pathlib import Path
+import uuid
+
+SOCKET=Path('/run/collarpet-menu/control.sock')
+
+class Menu:
+    def __init__(self,namespace):
+        self.ns=namespace
+        self.instance=uuid.uuid4().hex
+
+    def entries(self):
+        n=self.ns
+        items=[]
+        def add(id,label,group,type,command=None,**extra):
+            items.append(dict(id=id,label=label,group=group,type=type,command=command,enabled=True,**extra))
+        def toggle(id,label,group,var,command,**extra):
+            add(id,label,group,'boolean',command,value=bool(n[var]),**extra)
+        toggle('stealth','Stealth mode','Collar','STEALTH','STEALTH',persistent=False)
+        add('brightness','LED brightness (%)','Collar','integer','COLLAR_LED',value=n['COLLAR_LED_PERCENT'],min=0,max=100,persistent=True)
+        add('find','Find collar','Collar','action','FIND')
+        add('vu.mode','LED VU mode','Audio','choice','VU|MODE',choices=['AUTO','ALWAYS','OFF'],value=n['VU_MODE'],persistent=True)
+        add('vu.sens','LED VU sensitivity','Audio','choice','VU|SENS',choices=['LOW','NORMAL','HIGH'],value=n['VU_SENS'],persistent=True)
+        for id,label,group,var,phrase,persistent in [
+            ('ears.music','Ears react to music','Ears','EARS_MUSIC_REACT','ears music',True),
+            ('ears.wake','Ears react to Luma','Ears','LUMA_EARS_WAKE_REACT','ears react',True),
+            ('luma.haptic','Luma haptic feedback','Pet','LUMA_HAPTIC_FEEDBACK','haptic feedback',True),
+            ('gear.vu','Gear movement follows audio','Gear','GEAR_VU_ACTIVE','gear vu',False)]:
+            toggle(id,label,group,var,None,luma=phrase,persistent=persistent)
+
+        add('display.refresh','Refresh physical e-paper','Collar','action','DISPLAY|REFRESH')
+        toggle('gear.enabled','Enable gear','Gear','GEAR_MAIN_ENABLED','GEAR|ENABLE',persistent=True)
+        toggle('tail.enabled','Enable tail','Tail','TAIL_ENABLED','GEAR|TAIL|ENABLE',persistent=True)
+        toggle('ears.enabled','Enable ears','Ears','EARS_ENABLED','GEAR|EARS|ENABLE',persistent=True)
+        toggle('ears.active','Automatic ear movement','Ears','EARS_ACTIVE_MODE','GEAR|EARS|ACTIVE',persistent=True)
+        for id,label,var,method in [('tail.active','Automatic tail movement','TAIL_ACTIVE_MODE','set_active_mode'),
+                                    ('tail.song','Wag for known songs','TAIL_WAG_KNOWN_SONG','set_song_wag')]:
+            if callable(getattr(n['gear_manager'],method,None)):
+                toggle(id,label,'Tail',var,None,method=method,persistent=True)
+        toggle('ears.keep','Keep ears connected','Ears','EARS_KEEP_CONNECTED','GEAR|EARS|KEEP',persistent=True)
+        toggle('tail.keep','Keep tail connected','Tail','TAIL_KEEP_CONNECTED','GEAR|TAIL|KEEP',persistent=True)
+        for device,group,var in [('TAIL','Tail','TAIL_ENABLED'),('EARS','Ears','EARS_ENABLED')]:
+            for op,label in [('CONNECT','Connect'),('RELEASE','Release'),('LEARN','Learn nearby gear'),('FORGET','Forget learned gear')]:
+                add(device.lower()+'.'+op.lower(),label,group,'action','GEAR|'+device+'|'+op)
+                items[-1]['enabled']=bool(n['GEAR_MAIN_ENABLED'] and n[var]) if op in ('CONNECT','LEARN','BATT') else True
+                if op in ('LEARN','FORGET'):items[-1]['confirm']=label+' for '+group.lower()+'?'
+        tail_moves=dict(zip(['TAILHM','TAILS1','TAILS2','TAILS3','TAILFA','TAILSH','TAILHA','TAILER','TAILEP','TAILT1','TAILT2','TAILET'],
+                            ['Home','Slow wag 1','Slow wag 2','Slow wag 3','Fast wag','Short wag','Happy wag','Erect','Erect pulse','Tremble 1','Tremble 2','Erect tremble']))
+        tail_lights=dict(zip(['LEDOFF','LEDREC','LEDTRI','LEDSAW','LEDSOS','LEDBEA','LEDFLA','LEDSTR'],
+                             ['Off','Intermittent','Triangle','Saw','SOS','Beacon','Flame','Strobe']))
+        def choices(id,label,device,command,values):
+            add(id,label,'Gear','choice',command,choices=list(values),value=None,value_map=values)
+            items[-1]['enabled']=bool(n['GEAR_MAIN_ENABLED'] and n[device+'_ENABLED'])
+        choices('tail.move','Tail movements','TAIL','TAIL|MOVE',{tail_moves.get(v,v):v for v in tail_moves if v in n['TAIL_MOVE_COMMANDS']})
+        choices('ears.pose','Fixed ear positions','EARS','EAR|MOVE',{v.replace('_',' ').title():v for v in n['EAR_MOVE_PRESETS']})
+        choices('ears.animation','Ear animations','EARS','EAR|MOVE',{'Twitch':'TWITCH','Wiggle':'WIGGLE'})
+        choices('ears.listen','Ear listen mode','EARS','EAR|CMD',{'ON':'LISTENMODE','OFF':'STOPLISTEN'})
+        choices('ears.tilt','Ear tilt mode','EARS','EAR|CMD',{'ON':'TILTMODE','OFF':'STOPTILT'})
+        choices('tail.led','Tail light effects','TAIL','TAIL|LED',{tail_lights.get(v,v):v for v in tail_lights if v in n['TAIL_LED_COMMANDS']})
+        add('pet','Pet interaction','Pet','choice','PET',choices=['ATTENTION','WAKE','CALM'],value=None)
+        add('haptic','Haptic effect','Pet','choice','HAPTIC',choices=['CLICK','DOUBLE','FOX','ATTENTION','WAKE'],value=None)
+        add('flash','Flash effect','Collar','choice','FLASHBANG',choices=['WHITE','COLOR'],value=None,confirm='Trigger the bright flash effect?')
+        for op in ('REBOOT','SHUTDOWN'):
+            add('power.'+op.lower(),op.title()+' collar','Power','action','POWER|'+op,confirm=op.title()+' the Orange Pi? This disconnects CollarPet.')
+        # Gear contains actions; device tabs contain configuration and pairing.
+        order=['tail.move','ears.pose','ears.animation','ears.listen','ears.tilt','tail.led','gear.enabled','gear.vu',
+               'tail.enabled','tail.keep','tail.active','tail.song','tail.connect','tail.release','tail.learn','tail.forget',
+               'ears.enabled','ears.keep','ears.active','ears.music','ears.wake','ears.connect','ears.release','ears.learn','ears.forget']
+        if getattr(n['ear_manager'],'manual_pose',False):
+            for item in items:
+                if item['id'] in ('ears.active','ears.music'):item['value']=False
+        return sorted(items,key=lambda item:order.index(item['id']) if item['id'] in order else len(order))
+
+    def schema(self):
+        items=[{k:v for k,v in item.items() if k not in ('command','method','luma','value_map')} for item in self.entries()]
+        revision=hashlib.sha256(json.dumps(items,sort_keys=True).encode()).hexdigest()[:20]
+        return {'schema_version':1,'title':'CollarPet menu','instance':self.instance,'revision':revision,'items':items}
+
+    def handle(self,request):
+        if not isinstance(request,dict):raise ValueError('Expected an object')
+        if request.get('op')=='telemetry':
+            return {'ok':True,'tail':self.ns['gear_battery_value'](self.ns['gear_manager']),'ears':self.ns['gear_battery_value'](self.ns['ear_manager'])}
+        if request.get('op')=='get':return {'ok':True,'menu':self.schema()}
+        if request.get('op')!='set':raise ValueError('Unknown operation')
+        current=self.schema()
+        if request.get('instance')!=self.instance or request.get('revision')!=current['revision']:
+            return {'ok':False,'error':'Settings changed or CollarPet restarted. Reload the menu and try again.','menu':current}
+        item=next((i for i in self.entries() if i['id']==request.get('id')),None)
+        if not item or not item['enabled']:raise ValueError('Unavailable menu item')
+        if item.get('confirm') and request.get('confirmed') is not True:raise ValueError('Confirmation required')
+        value=request.get('value')
+        kind=item['type']
+        if kind=='boolean' and type(value) is not bool:raise ValueError('Expected boolean')
+        if kind=='integer' and (type(value) is not int or not item['min']<=value<=item['max']):raise ValueError('Value outside allowed range')
+        if kind=='choice' and value not in item['choices']:raise ValueError('Unknown choice')
+        if kind=='action' and value is not None:raise ValueError('Action takes no value')
+        if item.get('luma'):
+            self.ns['dispatch_luma_command'](item['luma']+(' on' if value else ' off'))
+        elif item.get('method'):
+            getattr(self.ns['gear_manager'],item['method'])(value)
+        else:
+            command=item['command']
+            if item.get('value_map'):value=item['value_map'][value]
+            if kind!='action':command+='|'+(str(int(value)) if kind=='boolean' else str(value))
+            self.ns['remote_command_handler']('pt35-menu',command.encode('utf-8'))
+        return {'ok':True,'message':'Accepted by CollarPet. Gear actions may complete asynchronously.','menu':self.schema()}
+
+
+async def serve(namespace):
+    menu=Menu(namespace)
+    SOCKET.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
+    os.chmod(SOCKET.parent,0o700)
+    SOCKET.unlink(missing_ok=True)
+    clients=set()
+    async def client(reader,writer):
+        task=asyncio.current_task()
+        if len(clients)>=8:
+            writer.close();return
+        clients.add(task)
+        try:
+            raw=await asyncio.wait_for(reader.readline(),5)
+            if len(raw)>8192:raise ValueError('Request too large')
+            response=menu.handle(json.loads(raw))
+        except Exception as exc:response={'ok':False,'error':str(exc)}
+        try:
+            writer.write(json.dumps(response,allow_nan=False).encode()+b'\n')
+            await asyncio.wait_for(writer.drain(),3)
+        except Exception:pass
+        finally:
+            writer.close()
+            clients.discard(task)
+    server=await asyncio.start_unix_server(client,path=str(SOCKET),limit=8192)
+    os.chmod(SOCKET,0o600)
+    try:
+        async with server:await namespace['stop_event'].wait()
+    finally:
+        for task in list(clients):task.cancel()
+        await asyncio.gather(*list(clients),return_exceptions=True)
+        SOCKET.unlink(missing_ok=True)
+
+
+CP_TOUCH_RUNTIME_MENU_PY
+cat > "$STAGE/client.py" <<'CP_TOUCH_CLIENT_PY'
+#!/usr/bin/env python3
+"""Fixed root-owned RPC client, reached only through the existing sudo wrapper."""
+import json
+import socket
+import sys
+
+def main():
+    raw=sys.stdin.buffer.readline(8193)
+    if not raw or len(raw)>8192:raise ValueError('Missing or oversized JSON request')
+    value=json.loads(raw)
+    if not isinstance(value,dict) or value.get('op') not in ('get','set'):raise ValueError('Unknown menu operation')
+    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as sock:
+        sock.settimeout(8)
+        sock.connect('/run/collarpet-menu/control.sock')
+        sock.sendall(json.dumps(value).encode()+b'\n')
+        with sock.makefile('rb') as stream:response=stream.readline(262145)
+    if len(response)>262144:raise ValueError('Oversized menu response')
+    result=json.loads(response)
+    print(json.dumps(result))
+    return 0 if result.get('ok') else 1
+
+if __name__=='__main__':
+    try:sys.exit(main())
+    except Exception as exc:
+        print(json.dumps({'ok':False,'error':'Menu unavailable: '+str(exc)}));sys.exit(1)
+
+CP_TOUCH_CLIENT_PY
+cat > "$STAGE/patch_runtime.py" <<'CP_TOUCH_PATCH_RUNTIME_PY'
+import hashlib
+from pathlib import Path
+def patched(source):
+    if hashlib.sha256(source.rstrip('\n').encode()).hexdigest()!='1cd0b3cbe4e3d92121b9905ca06dda095f3004b4306c45384375e7709e6b95f1':raise ValueError("Expected the previous collar rework update. No changes made; install it first or collect a fresh diagnostic bundle.")
+    return (Path(__file__).parent/"candidate.py").read_text()
+
+CP_TOUCH_PATCH_RUNTIME_PY
+cat > "$STAGE/patch_dashboard.py" <<'CP_TOUCH_PATCH_DASHBOARD_PY'
+import ast
+from pathlib import Path
+
+def patched(source,payload):
+    if '# PT35_TOUCH_MENU_V1' in source:return source
+    if '# PT35_COLLAR_MENU_DASHBOARD_V1' not in source:raise ValueError('Expected the installed CollarPet menu dashboard')
+    a=source.index('class CollarMenu:');b=source.index('\ndef open_menu():',a)
+    expected=(payload/'old_menu_class.txt').read_text()
+    if ast.dump(ast.parse(source[a:b]))!=ast.dump(ast.parse(expected)):raise ValueError('Menu code differs from expected version; no changes made')
+    source=source[:a]+(payload/'battery_ui.py.txt').read_text()+'\n'+(payload/'menu_class.py.txt').read_text()+source[b:]
+    # Hide stale values as soon as the dashboard loses the collar.
+    anchor="        last_ip=None;app_state=None\n"
+    if source.count(anchor)!=1:raise ValueError('Unexpected connection handler')
+    source=source.replace(anchor,anchor+"        gear_battery_text.set('T:--  E:--')\n",1)
+    ast.parse(source);return source
+
+CP_TOUCH_PATCH_DASHBOARD_PY
+cat > "$STAGE/candidate.py" <<'CP_TOUCH_CANDIDATE_PY'
 # COLLARPET_TOUCH_MENU_V1
 # COLLARPET_REWORK_V1
 #!/usr/bin/env python3
@@ -103,8 +309,6 @@ SONG_INDEX_OFFSETS = SONG_INDEX_DIR / "offsets.u32"
 SONG_INDEX_POSTINGS = SONG_INDEX_DIR / "postings.u32"
 SONG_MATCH_INTERVAL = 2.0
 SONG_WINDOW_SECONDS = 6.0
-SONG_RESULT_MAX_AGE = max(6.0,float(os.environ.get("COLLARPET_SONG_RESULT_MAX_AGE","30")))
-SONG_CONFIRM_MAX_GAP = max(6.0,float(os.environ.get("COLLARPET_SONG_CONFIRM_MAX_GAP","30")))
 SONG_MIN_HASH_VOTES = 6
 SONG_MIN_UNIQUE_HASHES = 5
 
@@ -852,7 +1056,6 @@ _song_announce_title = ""
 _song_announce_confidence = 0.0
 _song_announce_until = 0.0
 _song_episode_uuid = ""
-_song_diagnostics = {}
 
 
 def _song_worker_main(in_q, out_q):
@@ -964,7 +1167,7 @@ class SongConfirmation:
         if same_locked:
             self.reset();return True
         if seq<=self.seq:return False
-        if match["uuid"]!=self.uuid or captured_at-self.last>SONG_CONFIRM_MAX_GAP:
+        if match["uuid"]!=self.uuid or captured_at-self.last>SONG_WINDOW_SECONDS:
             self.reset();self.uuid=match["uuid"];self.first=captured_at
         self.last=captured_at;self.seq=seq;self.count+=1
         return self.count>=3 and captured_at-self.first>=SONG_WINDOW_SECONDS
@@ -1000,7 +1203,6 @@ async def song_match_task():
                     query_hashes = int(msg.get("query_hashes", 0))
                     window_seconds = float(msg.get("window_seconds", 0.0))
                     diag = msg.get("diag") or {}
-                    _song_diagnostics.update(seq=msg.get('seq'),received=now,elapsed=elapsed,candidate=match.get('display','-') if match else '-',decision='no match',confirm=0)
 
                     if match:
                         audio_fresh = audio.available and audio.last_update and (now - audio.last_update <= AUDIO_STALE_SECONDS)
@@ -1019,18 +1221,9 @@ async def song_match_task():
                             )
                         )
                         captured_at=float(msg.get("captured_at",0.0))
-                        window_ok=(0.0<=now-captured_at<=SONG_RESULT_MAX_AGE and float(msg.get("window_dbfs",-240.0))>=SONG_AUDIO_GATE_DBFS)
+                        window_ok=(0.0<=now-captured_at<=SONG_WINDOW_SECONDS and float(msg.get("window_dbfs",-240.0))>=SONG_AUDIO_GATE_DBFS)
                         eligible=bool(audio_fresh and audible and window_ok and match["votes"]>=min_votes and runner_ok)
                         accepted=confirmation.accept(match,eligible,same_locked_song,captured_at,int(msg.get("seq",-1)))
-                        reasons=[]
-                        if not audio_fresh:reasons.append('audio stale')
-                        if not audible:reasons.append('below audio gate')
-                        if not window_ok:reasons.append('window quiet or result stale')
-                        if match['votes']<min_votes:reasons.append('too few votes')
-                        if not runner_ok:reasons.append('ambiguous match')
-                        decision='accepted' if accepted else ', '.join(reasons) or 'waiting for confirmation'
-                        _song_diagnostics.update(decision=decision,confirm=confirmation.count)
-                        print(f"[SONGSCAN] decision={decision} votes={match['votes']}/{min_votes} age={now-captured_at:.1f}s window={msg.get('window_dbfs',-240):.1f}dBFS confirmations={confirmation.count}")
 
                         if accepted:
                             previous_seen = audio.song_last_seen
@@ -1644,38 +1837,16 @@ class TailGearManager:
         if TAIL_KEEP_CONNECTED:self.submit("CONNECT")
         else:self.manual_hold=False
 
-    def _battery_notify(self, _sender, data):
-        self.battery_raw=bytes(data).hex()
-        try:
-            text=bytes(data).decode("ascii").strip("\x00\r\n ")
-            value=parse_gear_battery(text,legacy=(self.profile or {}).get("name")=="mitail")
-        except (UnicodeDecodeError,ValueError):value=None
-        if value is not None:
-            self.battery=value;self.battery_updated_at=time.monotonic();self.battery_error=""
-        else:self.battery_error="Unrecognized battery format: "+self.battery_raw[:40]
-
     async def _battery_tick(self):
+        # Do not call _write: it connects gear and resets the idle timeout.
         if not self.connected or self.client is None or not self.profile:return
         now=time.monotonic()
         if now-getattr(self,"battery_requested_at",-100.0)<60.0:return
         self.battery_requested_at=now
         client=self.client;profile=self.profile
-        battery_uuid=profile.get("battery")
-        if battery_uuid and getattr(self,"battery_notify_client",None) is not client:
-            try:
-                await asyncio.wait_for(client.start_notify(battery_uuid,self._battery_notify),5.0)
-                self.battery_notify_client=client
-            except Exception as exc:self.battery_error="Battery notify: "+str(exc)[:140]
-        if battery_uuid:
-            try:
-                data=await asyncio.wait_for(client.read_gatt_char(battery_uuid),5.0)
-                if self.connected and self.client is client:self._battery_notify(battery_uuid,data)
-            except Exception as exc:self.battery_error="Battery read: "+str(exc)[:140]
-        if not self.connected or self.client is not client:return
-        self.battery_requested_at=time.monotonic()
         try:
             await asyncio.wait_for(client.write_gatt_char(profile["rx"],b"BATT\n",response=False),5.0)
-        except Exception as exc:self.battery_error="Battery request: "+str(exc)[:140]
+        except Exception as exc:LOGGER.debug("gear battery request failed: %s",exc)
 
     async def _keep_tick(self):
         if not (GEAR_MAIN_ENABLED and TAIL_ENABLED and TAIL_KEEP_CONNECTED) or self.connected:return
@@ -2055,38 +2226,16 @@ class EarGearManager:
         if EARS_KEEP_CONNECTED:self.submit("CONNECT")
         else:self.manual_hold=False
 
-    def _battery_notify(self, _sender, data):
-        self.battery_raw=bytes(data).hex()
-        try:
-            text=bytes(data).decode("ascii").strip("\x00\r\n ")
-            value=parse_gear_battery(text,legacy=(self.profile or {}).get("name")=="mitail")
-        except (UnicodeDecodeError,ValueError):value=None
-        if value is not None:
-            self.battery=value;self.battery_updated_at=time.monotonic();self.battery_error=""
-        else:self.battery_error="Unrecognized battery format: "+self.battery_raw[:40]
-
     async def _battery_tick(self):
+        # Do not call _write: it connects gear and resets the idle timeout.
         if not self.connected or self.client is None or not self.profile:return
         now=time.monotonic()
         if now-getattr(self,"battery_requested_at",-100.0)<60.0:return
         self.battery_requested_at=now
         client=self.client;profile=self.profile
-        battery_uuid=profile.get("battery")
-        if battery_uuid and getattr(self,"battery_notify_client",None) is not client:
-            try:
-                await asyncio.wait_for(client.start_notify(battery_uuid,self._battery_notify),5.0)
-                self.battery_notify_client=client
-            except Exception as exc:self.battery_error="Battery notify: "+str(exc)[:140]
-        if battery_uuid:
-            try:
-                data=await asyncio.wait_for(client.read_gatt_char(battery_uuid),5.0)
-                if self.connected and self.client is client:self._battery_notify(battery_uuid,data)
-            except Exception as exc:self.battery_error="Battery read: "+str(exc)[:140]
-        if not self.connected or self.client is not client:return
-        self.battery_requested_at=time.monotonic()
         try:
             await asyncio.wait_for(client.write_gatt_char(profile["rx"],b"BATT\n",response=False),5.0)
-        except Exception as exc:self.battery_error="Battery request: "+str(exc)[:140]
+        except Exception as exc:LOGGER.debug("gear battery request failed: %s",exc)
 
     async def _keep_tick(self):
         if not (GEAR_MAIN_ENABLED and EARS_ENABLED and EARS_KEEP_CONNECTED) or self.connected:return
@@ -2541,19 +2690,10 @@ def _pet_text(value: str, max_chars: int):
     return " ".join(clean.split())[:max_chars]
 
 
-# COLLARPET_PACK_BATTERY_V1
-def pack_battery_fresh():
-    return bool(esp.connected and 0<=time.monotonic()-getattr(esp,'battery_last_update',-100.0)<8.0)
-
 def current_pi_battery_percent():
-    if not pack_battery_fresh() or not getattr(esp,'battery_valid',False) or not getattr(esp,'battery_present',False):return -1
-    return getattr(esp,'battery_percent',-1)
-
-def pi_battery_label():
-    if pack_battery_fresh() and getattr(esp,'battery_valid',False) and not getattr(esp,'battery_present',False):return 'BAT NA'
-    percent=current_pi_battery_percent()
-    return f'BAT {percent}%' if percent>=0 else 'BAT --'
-
+    # Reserved for the collar-computer battery monitor. Hardware is not fitted
+    # yet, so -1 means unknown/unavailable and the UI draws a crossed battery.
+    return -1
 
 
 def remote_payload_signature():
@@ -2819,74 +2959,6 @@ def dispatch_luma_command(command: str, confidence: float = 0.0):
     LOGGER.info("unknown Luma command: %s", cmd)
 
 
-# COLLARPET_BLE_RESCUE_WIFI_V1
-def _rescue_connection_name():
-    """Return the preconfigured manual rescue NetworkManager profile name."""
-    path = Path("/etc/collarpet/link.conf")
-    default = "CollarPet-Rescue"
-    try:
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            if key.strip() == "RESCUE_CONNECTION_NAME":
-                value = value.strip().strip('"').strip("'")
-                return value or default
-    except Exception as exc:
-        LOGGER.warning("could not read rescue Wi-Fi config: %s", exc)
-    return default
-
-
-async def remote_rescue_wifi():
-    """Join the already-configured rescue AP when explicitly requested over BLE.
-
-    The PT35 creates the rescue hotspot. CollarPet only activates its saved,
-    manual-only NetworkManager client profile. The ESP is not involved.
-    """
-    profile = _rescue_connection_name()
-    print(f"[REMOTE CMD] rescue Wi-Fi requested; profile={profile}")
-    log_event("remote_command", command="rescue_wifi", profile=profile)
-
-    try:
-        # Best effort rescan. Failure here is not fatal; NetworkManager can
-        # still activate a recently known AP/profile.
-        rescan = await asyncio.create_subprocess_exec(
-            "nmcli", "--wait", "8", "device", "wifi", "rescan",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            await asyncio.wait_for(rescan.communicate(), timeout=12.0)
-        except asyncio.TimeoutError:
-            rescan.kill()
-            await rescan.communicate()
-
-        proc = await asyncio.create_subprocess_exec(
-            "nmcli", "--wait", "25", "connection", "up", "id", profile,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=32.0)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.communicate()
-            raise RuntimeError("NetworkManager timed out while joining rescue Wi-Fi")
-
-        text = (stdout or b"").decode("utf-8", errors="replace").strip()
-        err = (stderr or b"").decode("utf-8", errors="replace").strip()
-
-        if proc.returncode != 0:
-            raise RuntimeError(err or text or f"nmcli exited {proc.returncode}")
-
-        print(f"[RESCUE WIFI] connected using profile {profile}: {text or 'OK'}")
-        log_event("rescue_wifi", state="connected", profile=profile)
-    except Exception as exc:
-        LOGGER.warning("rescue Wi-Fi activation failed: %s", exc)
-        print(f"[RESCUE WIFI] failed: {exc}")
-        log_event("rescue_wifi", state="failed", profile=profile, error=str(exc))
-
 def remote_command_handler(sender, data):
     """Handle menu/remote-control notifications from the Heltec."""
     global STEALTH, COLLAR_LED_PERCENT, GEAR_MAIN_ENABLED, TAIL_ENABLED, VU_MODE, VU_SENS
@@ -3029,16 +3101,6 @@ def remote_command_handler(sender, data):
         if effect in ("CLICK", "DOUBLE", "FOX", "ATTENTION", "WAKE"):
             asyncio.create_task(esp_send(f"HAPTIC {effect}"))
             log_event("remote_command", command="haptic", value=effect)
-        return
-
-    # Rescue Wi-Fi is intentionally an explicit BLE action. The PT35 creates
-    # the CollarPet-Service AP; this Pi activates its saved client profile.
-    if parts[0] == "RESCUE" or (
-        len(parts) >= 2
-        and parts[0] in ("NETWORK", "WIFI")
-        and parts[1].upper() == "RESCUE"
-    ):
-        asyncio.create_task(remote_rescue_wifi())
         return
 
     if len(parts) >= 2 and parts[0] == "POWER":
@@ -3198,15 +3260,6 @@ def parse_esp_line(line: str):
             if esp.handshake:
                 esp.last_pong = now
                 esp.connected = True
-            return
-
-        if p[0] == "BAT" and len(p) == 5:
-            volts=float(p[1]);percent=int(p[2]);present=int(p[3]);valid=int(p[4])
-            if not (0.0<=volts<=12.0 and -1<=percent<=100 and present in (0,1) and valid in (0,1)):return
-            if valid and present and percent<0:return
-            if not present and (percent!=-1 or volts!=0.0):return
-            esp.battery_voltage=volts;esp.battery_percent=percent;esp.battery_present=bool(present);esp.battery_valid=bool(valid);esp.battery_last_update=now
-            print(f"[ESP BAT] volts={volts:.3f} percent={percent} present={present} valid={valid}")
             return
 
         if p[0] == "SENS" and len(p) >= 4:
@@ -4098,12 +4151,9 @@ def build_screen():
     # Top status bar: compact system information only.
     # ------------------------------------------------------------------
     draw.text((4, 3), datetime.now().strftime("%H:%M"), font=FONT, fill=0)
-    draw.text((42, 3), "M" if remote.connected else "-", font=FONT, fill=0)
-    tail_battery=gear_battery_value(gear_manager);ears_battery=gear_battery_value(ear_manager)
-    draw.text((64, 3), "T:"+(str(tail_battery)+"%" if tail_battery is not None else "--"), font=FONT, fill=0)
-    draw.text((128, 3), "E:"+(str(ears_battery)+"%" if ears_battery is not None else "--"), font=FONT, fill=0)
+    draw.text((76, 3), "MIRROR" if remote.connected else "NO MIRROR", font=FONT, fill=0)
     batt = current_pi_battery_percent()
-    draw.text((194, 3), pi_battery_label(), font=FONT, fill=0)
+    draw.text((194, 3), f"BAT {batt}%" if batt >= 0 else "BAT --", font=FONT, fill=0)
     draw.line((0, 17, 249, 17), fill=0)
 
     # ------------------------------------------------------------------
@@ -4355,8 +4405,6 @@ def display_signatures():
 
     # Keep normal sensor jitter from hammering the e-paper.
     detail_sig = (
-        pi_battery_label(),
-        gear_battery_value(gear_manager),gear_battery_value(ear_manager),
         bool(GEAR_MAIN_ENABLED and TAIL_ENABLED and TAIL_CONNECTED),
         bool(GEAR_MAIN_ENABLED and EARS_ENABLED and EARS_CONNECTED),
         primary_id,
@@ -4858,3 +4906,392 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
+
+CP_TOUCH_CANDIDATE_PY
+cat > "$STAGE/install.py" <<'CP_TOUCH_INSTALL_PY'
+#!/usr/bin/env python3
+"""Targeted two-device menu update; preserves the main unit and BLE services."""
+import argparse
+import ast
+import fcntl
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from patch_runtime import patched
+from patch_dashboard import patched as dashboard_patch
+
+LIVE=Path('/home/jenna/collarpet/collarpet.py')
+RUNTIME_PY='/home/jenna/mindtest/bin/python'
+WRAPPER=Path('/usr/local/sbin/collarpet-service-control')
+ROOT=Path('/usr/local/lib/collarpet-menu')
+RULE=Path('/etc/sudoers.d/collarpet-menu')
+LATEST=Path('/var/lib/collarpet-touch/latest')
+UNIT='collarpet.service'
+BACKUPS=Path('/var/backups/collarpet-touch')
+
+def run(args,check=True,timeout=60,**kw):
+    result=subprocess.run(args,text=True,capture_output=True,timeout=timeout,**kw)
+    if check and result.returncode:raise RuntimeError(result.stderr.strip() or result.stdout.strip() or 'Command failed: '+args[0])
+    return result
+
+def ctl(*args,**kw):return run(['systemctl',*args],**kw)
+def say(message):print(message,flush=True)
+
+def write(path,data,mode=0o644,owner=(0,0)):
+    path=Path(path)
+    if path.is_symlink() or (path.exists() and not path.is_file()):raise RuntimeError('Refusing non-regular file: '+str(path))
+    path.parent.mkdir(parents=True,exist_ok=True)
+    fd,temp=tempfile.mkstemp(prefix='.menu-update-',dir=path.parent)
+    try:
+        with os.fdopen(fd,'wb') as stream:stream.write(data)
+        os.chmod(temp,mode);os.chown(temp,*owner);os.replace(temp,path)
+    finally:
+        if os.path.exists(temp):os.unlink(temp)
+
+def stop():
+    ctl('stop',UNIT)
+    for prop,allowed in [('ActiveState',('inactive','failed')),('MainPID',('0',)),('ControlPID',('0',))]:
+        if ctl('show',UNIT,'-p',prop,'--value').stdout.strip() not in allowed:
+            raise RuntimeError('CollarPet did not fully stop; refusing file changes')
+
+def restore(backup,automatic=False):
+    backup=Path(backup)
+    if automatic and ((backup/'committed').exists() or (backup/'restored').exists()):return
+    state=json.loads((backup/'state.json').read_text())
+    stop()
+    for filename,item in state['files'].items():
+        path=Path(filename)
+        if item['exists']:write(path,(backup/'files'/filename.lstrip('/')).read_bytes(),item['mode'],(item['uid'],item['gid']))
+        else:path.unlink(missing_ok=True)
+    if state['active']:ctl('start',UNIT)
+    (backup/'restored').write_text(time.ctime())
+    ctl('stop',state['timer']+'.timer',check=False)
+    say('Previous files and runtime state restored. Backup: '+str(backup))
+
+def collar(payload):
+    if ROOT.is_symlink():raise RuntimeError('Refusing symlink menu directory')
+    for path in (LIVE,WRAPPER):
+        if not path.is_file() or path.is_symlink():raise RuntimeError('Expected regular file: '+str(path))
+    command=ctl('show',UNIT,'-p','ExecStart','--value').stdout
+    if RUNTIME_PY+' -u '+str(LIVE) not in command:raise RuntimeError('Unexpected CollarPet service command')
+    if ctl('show',UNIT,'-p','User','--value').stdout.strip() not in ('','root'):raise RuntimeError('Expected restored root CollarPet service')
+    unit=ctl('cat',UNIT).stdout
+    original=LIVE.read_bytes();candidate=patched(original.decode()).encode()
+    if '# COLLARPET_MENU_RPC_V1' not in WRAPPER.read_text():raise RuntimeError('Install the collar menu integration first')
+    files={str(LIVE):candidate}
+    for name in ('runtime_menu.py','client.py','install.py','patch_runtime.py','patch_dashboard.py','candidate.py'):
+        files[str(ROOT/name)]=(payload/name).read_bytes()
+    files[str(LATEST)]=b''
+    for filename in files:
+        path=Path(filename)
+        if path.is_symlink() or (path.exists() and not path.is_file()):raise RuntimeError('Unexpected target: '+filename)
+    # Validate with the existing runtime Python before stopping it.
+    check=payload/'candidate.py';check.write_bytes(candidate)
+    run([RUNTIME_PY,'-m','py_compile',str(check),str(payload/'runtime_menu.py')])
+    parent=BACKUPS;parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+    backup=Path(tempfile.mkdtemp(prefix=time.strftime('%Y%m%d-%H%M%S-'),dir=parent));backup.chmod(0o700)
+    state={'active':ctl('is-active','--quiet',UNIT,check=False).returncode==0,'files':{},'timer':'collarpet-menu-'+backup.name}
+    for filename in files:
+        path=Path(filename);item={'exists':path.exists()}
+        if path.exists():
+            st=path.stat();item.update(mode=st.st_mode&0o777,uid=st.st_uid,gid=st.st_gid)
+            dest=backup/'files'/filename.lstrip('/');dest.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,dest)
+        state['files'][filename]=item
+    (backup/'state.json').write_text(json.dumps(state))
+    for name in ('install.py','patch_runtime.py','patch_dashboard.py'):shutil.copy2(payload/name,backup/name)
+    say('Backup: '+str(backup))
+    run(['systemd-run','--quiet','--collect','--unit='+state['timer'],'--on-active=5m',
+         '/usr/bin/python3',str(backup/'install.py'),'--restore',str(backup),'--automatic'])
+    try:
+        if LIVE.read_bytes()!=original:raise RuntimeError('Runtime changed during preparation')
+        say('Restarting only CollarPet to apply the gear controls and battery reporting...')
+        stop()
+        ROOT.mkdir(parents=True,exist_ok=True,mode=0o755)
+        os.chown(ROOT,0,0);os.chmod(ROOT,0o755)
+        for filename,data in files.items():
+            if filename==str(LATEST):continue
+            old=state['files'][filename]
+            mode=old['mode'] if old['exists'] else (0o440 if filename==str(RULE) else 0o644)
+            owner=(old['uid'],old['gid']) if old['exists'] else (0,0)
+            if filename==str(WRAPPER):mode=0o755;owner=(0,0)
+            elif filename==str(RULE):mode=0o440;owner=(0,0)
+            elif Path(filename).parent==ROOT:mode=0o644;owner=(0,0)
+            write(filename,data,mode,owner)
+        ctl('start',UNIT)
+        deadline=time.monotonic()+60
+        while True:
+            result=run(['sudo','-u','jenna','sudo','-n',str(WRAPPER),'menu'],input='{"op":"get"}\n',check=False,timeout=12)
+            try:
+                response=json.loads(result.stdout)
+                valid=result.returncode==0 and response.get('ok') and response['menu']['schema_version']==1 and len(response['menu']['items'])>=10
+            except Exception:valid=False
+            if valid and ctl('is-active','--quiet',UNIT,check=False).returncode==0:break
+            if time.monotonic()>=deadline:raise RuntimeError('Live menu verification failed: '+(result.stderr or result.stdout)[-500:])
+            time.sleep(1)
+        if ctl('cat',UNIT).stdout!=unit:raise RuntimeError('Main unit changed unexpectedly')
+        if not state['active']:stop()
+        write(LATEST,(str(backup)+'\n').encode(),0o600)
+        (backup/'committed').write_text(time.ctime())
+        ctl('stop',state['timer']+'.timer',check=False)
+    except BaseException:
+        say('Update failed; restoring previous files...')
+        try:restore(backup)
+        except Exception as exc:say('Rollback failed: '+str(exc)+'; backup: '+str(backup))
+        raise
+    say('Rework installed; live menu verified. Main unit and BLE services preserved.')
+    say('Rollback: sudo bash update-collarpet-touch-menu.sh collarpet --rollback')
+
+def pt35(payload,rollback=False):
+    if os.geteuid()==0:raise RuntimeError('Run PT35 mode without sudo')
+    base=Path.home()/'.local/share/collarpet-link';target=base/'dashboard.py';latest=base/'touch-menu-backup'
+    if not target.is_file() or target.is_symlink():raise RuntimeError('Expected installed dashboard')
+    if rollback:
+        backup=Path(latest.read_text().strip())
+        if backup.parent!=base or not backup.name.startswith('dashboard.py.before-touch-'):raise RuntimeError('Unexpected backup')
+        write(target,backup.read_bytes(),0o755,(os.getuid(),os.getgid()));say('Previous dashboard restored. Reopen the app.');return
+    source=target.read_text();candidate=dashboard_patch(source,payload)
+    if candidate==source:say('Touch menu already installed. Reopen the app.');return
+    fd,backup=tempfile.mkstemp(prefix='dashboard.py.before-touch-',dir=base);os.close(fd);shutil.copy2(target,backup)
+    write(target,candidate.encode(),target.stat().st_mode&0o777,(os.getuid(),os.getgid()))
+    latest.write_text(backup+'\n')
+    say('Touch menu installed. Close and reopen Collar Pet. Backup: '+backup)
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument('mode',nargs='?',choices=['collarpet','pt35']);parser.add_argument('--payload');parser.add_argument('--rollback',action='store_true');parser.add_argument('--restore');parser.add_argument('--automatic',action='store_true')
+    args=parser.parse_args();payload=Path(args.payload or Path(__file__).parent)
+    if args.mode=='pt35':pt35(payload,args.rollback);return
+    if os.geteuid()!=0:raise SystemExit('Use sudo for collarpet mode.')
+    if args.mode!='collarpet' and not args.restore:raise SystemExit('Choose collarpet mode.')
+    with open('/run/collarpet-menu-install.lock','a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX)
+        if args.restore:restore(args.restore,args.automatic)
+        elif args.rollback:restore(LATEST.read_text().strip())
+        else:collar(payload)
+
+if __name__=='__main__':
+    try:main()
+    except Exception as exc:raise SystemExit('ERROR: '+str(exc))
+
+CP_TOUCH_INSTALL_PY
+cat > "$STAGE/old_menu_class.txt" <<'CP_TOUCH_OLD_MENU_CLASS_TXT'
+class CollarMenu:
+    def __init__(self,target):
+        self.target=target;self.schema=None;self.pending=False;self.closed=False
+        self.win=tk.Toplevel(root);self.win.title('CollarPet menu');self.win.geometry('760x440');self.win.configure(bg=BG)
+        self.win.columnconfigure(0,weight=1);self.win.rowconfigure(1,weight=1)
+        self.note=label(self.win,'Loading menu from CollarPet…',13);self.note.grid(row=0,column=0,sticky='ew',padx=10,pady=6)
+        self.book=ttk.Notebook(self.win);self.book.grid(row=1,column=0,sticky='nsew',padx=8)
+        bottom=tk.Frame(self.win,bg=BG);bottom.grid(row=2,column=0,sticky='ew',padx=8,pady=6)
+        tk.Button(bottom,text='RELOAD MENU',command=self.load).pack(side='left')
+        tk.Button(bottom,text='CLOSE',command=self.win.destroy).pack(side='right')
+        self.win.bind('<Destroy>',lambda event:setattr(self,'closed',True) if event.widget is self.win else None)
+        self.load()
+
+    def request(self,payload):
+        if self.pending or self.closed:return
+        if last_ip!=self.target:
+            self.note.config(text='Connection changed. Close and reopen the menu.');return
+        self.pending=True;self.note.config(text='Waiting for CollarPet…')
+        def done(result,error):
+            if self.closed:return
+            self.pending=False
+            if last_ip!=self.target:
+                self.note.config(text='Connection changed. Close and reopen the menu.');return
+            if error:self.note.config(text=error[:160]);return
+            if isinstance(result,dict) and result.get('menu'):
+                try:self.render(result['menu'])
+                except Exception as exc:self.note.config(text='Invalid menu: '+str(exc));return
+            if not result.get('ok'):self.note.config(text=result.get('error','Menu unavailable')[:160])
+            else:self.note.config(text=result.get('message','Live settings from CollarPet')[:160])
+            if payload['op']=='set':root.after(500,refresh)
+        background(lambda:ssh_request(self.target,'menu',payload),done)
+
+    def load(self):self.request({'op':'get'})
+
+    def apply(self,item,value):
+        if self.pending or not self.schema:return
+        if item.get('confirm') and not messagebox.askyesno('Confirm',item['confirm'],parent=self.win):return
+        self.request({'op':'set','instance':self.schema['instance'],'revision':self.schema['revision'],
+                      'id':item['id'],'value':value,'confirmed':bool(item.get('confirm'))})
+
+    def render(self,schema):
+        if schema.get('schema_version')!=1 or not isinstance(schema.get('items'),list):raise ValueError('unsupported schema')
+        self.schema=schema
+        selected=self.book.index(self.book.select()) if self.book.tabs() else 0
+        for widget in self.book.winfo_children():widget.destroy()
+        groups={}
+        for item in schema['items']:
+            group=item.get('group','Settings')
+            if group not in groups:
+                outer=tk.Frame(self.book,bg=CARD);self.book.add(outer,text=group)
+                canvas=tk.Canvas(outer,bg=CARD,highlightthickness=0)
+                scrollbar=ttk.Scrollbar(outer,orient='vertical',command=canvas.yview)
+                canvas.configure(yscrollcommand=scrollbar.set);scrollbar.pack(side='right',fill='y');canvas.pack(fill='both',expand=True)
+                inner=tk.Frame(canvas,bg=CARD);window=canvas.create_window(0,0,window=inner,anchor='nw')
+                inner.bind('<Configure>',lambda event,c=canvas:c.configure(scrollregion=c.bbox('all')))
+                canvas.bind('<Configure>',lambda event,c=canvas,w=window:c.itemconfigure(w,width=event.width))
+                groups[group]=inner
+            row=tk.Frame(groups[group],bg=CARD);row.pack(fill='x',padx=10,pady=4)
+            caption=item['label']+(' (temporary)' if item.get('persistent') is False else '')
+            label(row,caption,14,bg=CARD).pack(side='left',padx=(0,10))
+            enabled='normal' if item.get('enabled',True) else 'disabled';kind=item['type']
+            if kind=='boolean':
+                value=bool(item.get('value'))
+                tk.Button(row,text='ON' if value else 'OFF',width=9,state=enabled,
+                          command=lambda i=item,v=value:self.apply(i,not v)).pack(side='right')
+            elif kind in ('integer','choice'):
+                var=tk.StringVar(value=str(item.get('value') if item.get('value') is not None else (item.get('choices') or [''])[0]))
+                def submit(i=item,v=var):
+                    try:value=int(v.get()) if i['type']=='integer' else v.get()
+                    except ValueError:self.note.config(text='Enter a whole number.');return
+                    self.apply(i,value)
+                tk.Button(row,text='APPLY',state=enabled,command=submit).pack(side='right',padx=(6,0))
+                if kind=='integer':control=tk.Spinbox(row,from_=item['min'],to=item['max'],textvariable=var,width=7,state=enabled)
+                else:control=ttk.Combobox(row,values=item['choices'],textvariable=var,width=18,state='readonly' if enabled=='normal' else 'disabled')
+                control.pack(side='right')
+            elif kind=='action':tk.Button(row,text='RUN',width=9,state=enabled,command=lambda i=item:self.apply(i,None)).pack(side='right')
+        if self.book.tabs():self.book.select(min(selected,len(self.book.tabs())-1))
+
+CP_TOUCH_OLD_MENU_CLASS_TXT
+cat > "$STAGE/menu_class.py.txt" <<'CP_TOUCH_MENU_CLASS_PY_TXT'
+# PT35_TOUCH_MENU_V1
+class CollarMenu:
+    def __init__(self,target):
+        self.target=target;self.schema=None;self.pending=False;self.closed=False
+        self.group='Gear';self.page=0;self.leaf=None;self.choice_page=0;self.draft=None
+        self.win=tk.Toplevel(root);self.win.title('CollarPet menu');self.win.configure(bg=BG)
+        self.win.attributes('-fullscreen',True)
+        self.win.columnconfigure(0,weight=1);self.win.rowconfigure(2,weight=1)
+        head=tk.Frame(self.win,bg=BG);head.grid(row=0,column=0,sticky='ew',padx=10,pady=6)
+        self.note=label(head,'Loading menu…',14);self.note.pack(side='left',fill='x',expand=True)
+        label(head,'',14,True).pack(side='right')
+        battery=tk.Label(head,textvariable=gear_battery_text,font=('DejaVu Sans',-16,'bold'),bg=BG,fg=FG);battery.pack(side='right')
+        self.tabs=tk.Frame(self.win,bg=BG);self.tabs.grid(row=1,column=0,sticky='ew',padx=8)
+        self.body=tk.Frame(self.win,bg=CARD);self.body.grid(row=2,column=0,sticky='nsew',padx=8,pady=6)
+        self.nav=tk.Frame(self.win,bg=BG);self.nav.grid(row=3,column=0,sticky='ew',padx=8,pady=(0,8))
+        self.win.bind('<Escape>',lambda event:self.back())
+        self.win.bind('<Destroy>',lambda event:setattr(self,'closed',True) if event.widget is self.win else None)
+        self.load()
+
+    def request(self,payload):
+        if self.pending or self.closed:return
+        if last_ip!=self.target:self.note.config(text='Connection changed. Reopen menu.');return
+        self.pending=True;self.note.config(text='Waiting for collar…')
+        def done(result,error):
+            if self.closed:return
+            self.pending=False
+            if last_ip!=self.target:self.note.config(text='Connection changed. Reopen menu.');return
+            if error:self.note.config(text=error[:65]);return
+            if not isinstance(result,dict):self.note.config(text='Invalid menu response');return
+            if result.get('menu'):
+                try:self.render(result['menu'])
+                except Exception as exc:self.note.config(text='Invalid menu: '+str(exc)[:45]);return
+            self.note.config(text=('Sent to collar' if payload['op']=='set' else 'Collar settings') if result.get('ok') else result.get('error','Unavailable')[:65])
+        background(lambda:ssh_request(self.target,'menu',payload),done)
+
+    def load(self):self.request({'op':'get'})
+    def apply(self,item,value):
+        if self.pending or not self.schema:return
+        if item.get('confirm') and not messagebox.askyesno('Confirm',item['confirm'],parent=self.win):return
+        self.request({'op':'set','instance':self.schema['instance'],'revision':self.schema['revision'],
+                      'id':item['id'],'value':value,'confirmed':bool(item.get('confirm'))})
+    def button(self,parent,text,command,row,col,enabled=True):
+        w=tk.Button(parent,text=text,command=command,font=('DejaVu Sans',-17,'bold'),bg=CARD,fg=FG,
+                    activebackground='#30455b',activeforeground=FG,relief='flat',wraplength=max(180,(self.win.winfo_screenwidth()-60)//2),
+                    state='normal' if enabled else 'disabled',padx=8,pady=12)
+        w.grid(row=row,column=col,sticky='nsew',padx=4,pady=4);return w
+    def select_group(self,group):
+        self.group=group;self.page=0;self.leaf=None;self.draw()
+    def open_choice(self,item):
+        self.leaf=item['id'];self.choice_page=0;self.draft=item.get('value');self.draw()
+    def back(self):
+        if self.leaf:self.leaf=None;self.draw()
+        else:self.win.destroy()
+    def move_page(self,delta):
+        if self.leaf:self.choice_page+=delta
+        else:self.page+=delta
+        self.draw()
+    def change_number(self,item,delta):
+        self.draft=max(item['min'],min(item['max'],int(self.draft or 0)+delta));self.draw()
+    def render(self,schema):
+        if schema.get('schema_version')!=1 or not isinstance(schema.get('items'),list):raise ValueError('unsupported schema')
+        self.schema=schema;self.draw()
+    def draw(self):
+        if not self.schema:return
+        for frame in (self.tabs,self.body,self.nav):
+            for widget in frame.winfo_children():widget.destroy()
+        groups=list(dict.fromkeys(i.get('group','Settings') for i in self.schema['items']))
+        if self.group not in groups:self.group=groups[0] if groups else 'Settings'
+        for col,group in enumerate(groups):
+            self.tabs.columnconfigure(col,weight=1)
+            tk.Button(self.tabs,text=group,command=lambda g=group:self.select_group(g),font=('DejaVu Sans',-14,'bold'),
+                      bg='#356080' if group==self.group else CARD,fg=FG,pady=12,relief='flat').grid(row=0,column=col,sticky='ew',padx=2)
+        for row in range(3):self.body.rowconfigure(row,weight=1,uniform='tiles')
+        for col in range(2):self.body.columnconfigure(col,weight=1,uniform='tiles')
+        item=next((i for i in self.schema['items'] if i['id']==self.leaf),None)
+        if item and item['type']=='integer':
+            self.note.config(text=item['label']+': '+str(self.draft))
+            for index,delta in enumerate((-10,10,-1,1)):
+                self.button(self.body,f'{delta:+d}',lambda d=delta,i=item:self.change_number(i,d),index//2,index%2)
+            self.button(self.body,'APPLY '+str(self.draft),lambda i=item:self.apply(i,int(self.draft)),2,0,item.get('enabled',True))
+            self.button(self.body,'BACK',self.back,2,1)
+            page=0;pages=1
+        else:
+            entries=item['choices'] if item else [i for i in self.schema['items'] if i.get('group','Settings')==self.group]
+            pages=max(1,(len(entries)+5)//6)
+            page=max(0,min(self.choice_page if item else self.page,pages-1))
+            if item:self.choice_page=page;self.note.config(text=item['label'])
+            else:self.leaf=None;self.page=page
+            for index,value in enumerate(entries[page*6:page*6+6]):
+                if item:
+                    text=str(value)+(' ✓' if value==item.get('value') else '')
+                    callback=lambda v=value,i=item:self.apply(i,v);enabled=item.get('enabled',True)
+                else:
+                    text=value['label'];kind=value['type'];enabled=value.get('enabled',True)
+                    if kind=='boolean':
+                        text+='\n'+('ON' if value.get('value') else 'OFF')
+                        callback=lambda i=value:self.apply(i,not bool(i.get('value')))
+                    elif kind in ('choice','integer'):
+                        text+='  ›';callback=lambda i=value:self.open_choice(i)
+                    else:callback=lambda i=value:self.apply(i,None)
+                self.button(self.body,text,callback,index//2,index%2,enabled)
+        actions=[('BACK' if self.leaf else 'CLOSE',self.back,True),('◀',lambda:self.move_page(-1),page>0),
+                 (f'{page+1}/{pages}',self.load,True),('▶',lambda:self.move_page(1),page+1<pages)]
+        for col,(text,command,enabled) in enumerate(actions):
+            self.nav.columnconfigure(col,weight=1,uniform='nav');self.button(self.nav,text,command,0,col,enabled)
+
+CP_TOUCH_MENU_CLASS_PY_TXT
+cat > "$STAGE/battery_ui.py.txt" <<'CP_TOUCH_BATTERY_UI_PY_TXT'
+# PT35_GEAR_BATTERY_V1
+gear_battery_text=tk.StringVar(value='T:--  E:--')
+gear_battery_label=tk.Label(header,textvariable=gear_battery_text,font=('DejaVu Sans',-15,'bold'),bg=BG,fg=FG)
+gear_battery_label.pack(side='right',padx=10)
+gear_battery_pending=False
+gear_battery_target=None
+
+def poll_gear_battery():
+    global gear_battery_pending,gear_battery_target
+    target=last_ip if app_state=='active' else None
+    if target!=gear_battery_target:
+        gear_battery_target=target;gear_battery_text.set('T:--  E:--')
+    if target and not gear_battery_pending:
+        gear_battery_pending=True
+        def done(result,error):
+            global gear_battery_pending
+            gear_battery_pending=False
+            if last_ip!=target or app_state!='active':gear_battery_text.set('T:--  E:--');return
+            def value(key):
+                x=result.get(key) if isinstance(result,dict) and result.get('ok') else None
+                return str(x)+'%' if type(x) is int and 0<=x<=100 else '--'
+            gear_battery_text.set('T:'+value('tail')+'  E:'+value('ears'))
+        background(lambda:ssh_request(target,'menu',{'op':'telemetry'}),done)
+    root.after(30000,poll_gear_battery)
+root.after(1000,poll_gear_battery)
+
+CP_TOUCH_BATTERY_UI_PY_TXT
+python3 "$STAGE/install.py" --payload "$STAGE" "$@"

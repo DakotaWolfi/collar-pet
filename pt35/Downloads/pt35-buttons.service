@@ -1,0 +1,19 @@
+[Unit]
+Description=PT35 Collar Pet button daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/pt35-buttons.py
+Restart=on-failure
+RestartSec=2
+Environment=PYTHONUNBUFFERED=1
+
+# Edit these once the real launcher commands are known:
+# Environment=PT35_TRAINER_CMD=/path/to/trainer
+# Environment=PT35_NORMAL_CMD=/path/to/collar-pet
+# Environment=PT35_X_CMD=/path/to/status-screen
+# Environment=PT35_Y_CMD=/path/to/song-recognition
+
+[Install]
+WantedBy=default.target

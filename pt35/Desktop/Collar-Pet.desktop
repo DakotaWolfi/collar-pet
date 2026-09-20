@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Collar Pet
+Comment=CollarPet fullscreen dashboard and menu
+Exec="/home/jenna/.local/bin/cp-dashboard"
+Icon=/home/jenna/.local/share/collarpet-link/collarpet-icon.png
+Terminal=false
+StartupNotify=false
+Categories=Utility;Network;

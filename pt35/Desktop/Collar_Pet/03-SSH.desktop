@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - SSH
+Comment=SSH to the Collar Pet SBC
+Exec=x-terminal-emulator -e bash -lc 'cp-ssh; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

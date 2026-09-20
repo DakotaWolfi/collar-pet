@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Collar Pet - ESP Info
+Comment=Read chip information from connected ESP
+Exec=x-terminal-emulator -e bash -lc 'cp-esp-info; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Development;

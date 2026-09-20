@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Connect to Collar Pet
+Comment=Run Collar Pet connection script
+Exec=x-terminal-emulator -e bash -lc '/home/jenna/Desktop/Collar_Pet/collar-pet-connect.sh; echo; read -r -p "Press Enter to close..."'
+Terminal=false
+Categories=Network;
