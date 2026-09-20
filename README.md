@@ -10,7 +10,7 @@ It started as a wearable pet-computer experiment and has grown into a platform f
 
 > **Prototype warning:** this repository follows the active development system. Expect rough edges, changing interfaces, experimental hardware, and the occasional deeply questionable engineering decision.
 
-![CollarPet prototype with PT35 terminal and remote](docs/images/prototype/collarpet-system-overview-fursuit-pt35-remote.png)
+![CollarPet prototype with PT35 terminal and remote](docs/images/collarpet-system-overview-fursuit-pt35-remote.png)
 
 ## What CollarPet currently does
 
@@ -34,7 +34,7 @@ The current development system uses an **Orange Pi Zero 3W** as the main Linux c
 
 The prototype stack also includes an e-paper display, addressable LEDs, environmental and motion sensors, a small active heatsink/blower, and a large amount of hand-wired perfboard.
 
-![Current CollarPet sensor and display prototype](docs/images/prototype/collarpet-sensor-board-top-overview.png)
+![Current CollarPet sensor and display prototype](docs/images/collarpet-sensor-board-top-overview.png)
 
 The final hardware is being redesigned into a cleaner stacked PCB assembly.
 
@@ -46,11 +46,11 @@ The PT35 acts as a portable dashboard and service terminal for CollarPet.
 
 It can be used for status, controls, diagnostics, SSH access, maintenance tools, and PetMind training.
 
-![PT35 CollarPet dashboard](docs/images/prototype/pt35-collarpet-main-ui.png)
+![PT35 CollarPet dashboard](docs/images/pt35-collarpet-main-ui.png)
 
 The PetMind training interface allows real-world events to be labelled and recorded from the PT35 without turning the main CollarPet display into a giant engineering dashboard.
 
-![PT35 PetMind training interface](docs/images/prototype/pt35-petmind-training-ui.png)
+![PT35 PetMind training interface](docs/images/pt35-petmind-training-ui.png)
 
 ## Architecture
 
@@ -96,7 +96,7 @@ The main CollarPet display follows the same visual language as the remotes: a la
 
 This section exists because the prototype has reached the point where technical accuracy and stupidity overlap.
 
-![Decorative NVIDIA GPU package on the CollarPet prototype](docs/images/prototype/collarpet-nvidia-mic-module-closeup.png)
+![Decorative NVIDIA GPU package on the CollarPet prototype](docs/images/collarpet-nvidia-mic-module-closeup.png)
 
 There is an actual **NVIDIA GPU package physically mounted on the prototype**.
 
@@ -112,7 +112,7 @@ That's the decorative one.
 
 The **GTX 1080 Ti** is the one that could, in principle, actually do graphics work:
 
-![CollarPet next to a GTX 1080 Ti bench experiment](docs/images/prototype/collarpet-bench-overview-pt35-gpu-prototype.png)
+![CollarPet next to a GTX 1080 Ti bench experiment](docs/images/collarpet-bench-overview-pt35-gpu-prototype.png)
 
 To be clear: the 1080 Ti is **not part of the wearable build** and is not currently integrated into CollarPet.
 
