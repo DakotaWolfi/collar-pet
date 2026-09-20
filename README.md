@@ -46,11 +46,11 @@ The PT35 acts as a portable dashboard and service terminal for CollarPet.
 
 It can be used for status, controls, diagnostics, SSH access, maintenance tools, and PetMind training.
 
-![PT35 CollarPet dashboard](docs/images/pt35-collarpet-main-ui.png)
+![PT35 CollarPet dashboard](docs/images/pt35-collarpet-main-ui_new.png)
 
 The PetMind training interface allows real-world events to be labelled and recorded from the PT35 without turning the main CollarPet display into a giant engineering dashboard.
 
-![PT35 PetMind training interface](docs/images/pt35-petmind-training-ui.png)
+![PT35 PetMind training interface](docs/images/pt35-petmind-training-ui_new.png)
 
 ## Architecture
 
