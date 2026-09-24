@@ -126,22 +126,21 @@ Current GPU status:
 
 - **Dedicated NVIDIA GPU:** technically yes
 - **Useful:** no
-- **Improved gaming FPS:** also no
+- **Improved gaming FPS:** Yes... but only if you realy believe in it. (not realy)
 - **Could a GTX 1080 Ti theoretically be attached if the project completely lost control of itself:** technically yes
+- **Finnisged PCB** no ther wil not be a dedicated GPU on the finished PCB. because  ... space sadly physics disagrees.
 
 This is the kind of distinction that matters around here.
 
 ## Hardware source status
 
-The CollarPet hardware is intended to be open source as well.
+The CollarPet hardware is open source.
 
-The repository already contains the current schematic and EasyEDA source files, so the electrical design is available for inspection and reuse.
+The repository contains the current schematics, PCB design files, and editable EasyEDA source files for the published hardware revisions. These files can be inspected, modified, and used to reproduce the electrical design.
 
-The physical prototype is still built largely on perfboard and urgently needs to become a proper PCB revision.
+The current physical prototype is still built partly on perfboard while the design transitions toward a cleaner stacked PCB assembly.
 
-The PCB layout itself is not published yet because the current design contains third-party Eurofurence 31 silkscreen artwork. I do not want to redistribute that artwork without explicit permission from the relevant rights holders.
-
-Once that is clarified, the PCB layout can either be published with permission or released as a cleaned version without the restricted artwork.
+The hardware source files published in this repository do not contain the third-party Eurofurence 31 artwork used on some personal prototype designs. Any third-party artwork remains outside the scope of the CollarPet open-hardware license unless explicitly stated otherwise.
 
 ## Repository layout
 
@@ -234,6 +233,10 @@ Hardware and software interfaces may change without warning while the design set
 
 ## License
 
-A project license has not been selected yet.
+CollarPet uses separate licenses for different parts of the project:
 
-Until one is added, normal copyright rules apply.
+Software and firmware: MIT License
+Original hardware designs, schematics and PCB design files: CERN Open Hardware Licence Version 2 – Strongly Reciprocal (CERN-OHL-S-2.0)
+Documentation and original project media: CC BY-SA 4.0
+
+Third-party components, libraries, artwork and hardware remain subject to their respective licenses and terms.
