@@ -103,6 +103,9 @@ There is an actual **NVIDIA GPU package physically mounted on the prototype**.
 It is salvaged, decorative, and **not electrically connected as a working graphics processor**.
 
 So yes, CollarPet technically has a dedicated NVIDIA GPU.
+Markings: N10M-NS-S-A3
+Model: NVIDEA NVS 3100M
+based on a GT218 Tesla 
 
 **Thanks to the dedicated NVIDIA GPU, we expect significantly better FPS in games.**
 
