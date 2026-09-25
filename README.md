@@ -104,8 +104,8 @@ It is salvaged, decorative, and **not electrically connected as a working graphi
 
 So yes, CollarPet technically has a dedicated NVIDIA GPU.
 Markings: N10M-NS-S-A3
-Model: NVIDEA NVS 3100M
-based on a GT218 Tesla 
+Model: NVIDIA NVS 3100M
+based on a GT218 Tesla
 
 **Thanks to the dedicated NVIDIA GPU, we expect significantly better FPS in games.**
 
@@ -131,7 +131,7 @@ Current GPU status:
 - **Useful:** no
 - **Improved gaming FPS:** Yes... but only if you realy believe in it. (not realy)
 - **Could a GTX 1080 Ti theoretically be attached if the project completely lost control of itself:** technically yes
-- **Finnisged PCB** no ther wil not be a dedicated GPU on the finished PCB. because  ... space sadly physics disagrees.
+- **Finnisged PCB** no, there will not be a dedicated GPU on the finished PCB. Because... space and physics disagree.
 
 This is the kind of distinction that matters around here.
 
