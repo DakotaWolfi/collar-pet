@@ -64,7 +64,7 @@ UI behavior (V2 intent):
 
 Status polling target: about every 2 seconds when reachable via Wi-Fi/recovery AP.
 
-![PetMind Training Recorder running on the PT35](images/prototype/pt35-petmind-training-ui_new.png)
+![PetMind Training Recorder running on the PT35](docs/images/pt35-petmind-training-ui_new.png)
 
 ## 4. Recovery AP Workflow
 
